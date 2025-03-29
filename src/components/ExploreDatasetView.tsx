@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useNeuralNetwork } from '@/context/NeuralNetworkContext';
+import { useNeuralNetwork } from '@/hooks/useNeuralNetworkContext';
 import { toast } from '@/hooks/use-toast';
 import LoadingSpinner from './explore/LoadingSpinner';
 import ViewToggle from './explore/ViewToggle';

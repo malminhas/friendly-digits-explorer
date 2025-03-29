@@ -45,7 +45,8 @@ const GridDigitView = ({
     const currentGroup = Math.floor(currentIndex / gridCount);
     const totalGroups = Math.ceil((trainImages?.length || 0) / gridCount);
     const newGroup = currentGroup > 0 ? currentGroup - 1 : totalGroups - 1;
-    setCurrentIndex(newGroup * gridCount);
+    const newIndex = newGroup * gridCount;
+    setCurrentIndex(newIndex);
   };
 
   const handleNextGrid = () => {
@@ -53,7 +54,8 @@ const GridDigitView = ({
     const currentGroup = Math.floor(currentIndex / gridCount);
     const totalGroups = Math.ceil((trainImages?.length || 0) / gridCount);
     const newGroup = currentGroup < totalGroups - 1 ? currentGroup + 1 : 0;
-    setCurrentIndex(newGroup * gridCount);
+    const newIndex = newGroup * gridCount;
+    setCurrentIndex(newIndex);
   };
 
   const getCurrentPage = () => {

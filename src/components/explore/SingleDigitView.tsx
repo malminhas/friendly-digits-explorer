@@ -31,15 +31,13 @@ const SingleDigitView = ({
   }, [trainImages, currentIndex]);
 
   const handlePrevious = () => {
-    setCurrentIndex(prev => 
-      prev > 0 ? prev - 1 : (trainImages?.length || 1) - 1
-    );
+    const newIndex = currentIndex > 0 ? currentIndex - 1 : (trainImages?.length || 1) - 1;
+    setCurrentIndex(newIndex);
   };
 
   const handleNext = () => {
-    setCurrentIndex(prev => 
-      prev < (trainImages?.length || 1) - 1 ? prev + 1 : 0
-    );
+    const newIndex = currentIndex < (trainImages?.length || 1) - 1 ? currentIndex + 1 : 0;
+    setCurrentIndex(newIndex);
   };
   
   return (
