@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { renderDigitToCanvas } from '@/lib/mnist';
 import { useNeuralNetwork } from '@/context/NeuralNetworkContext';
 import { ChevronLeft, ChevronRight, Grid, Rows } from 'lucide-react';
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
 const ExploreDatasetView = () => {
   const { trainImages, trainLabels, datasetLoaded, loadDataset } = useNeuralNetwork();
@@ -22,6 +23,11 @@ const ExploreDatasetView = () => {
       loadDataset();
     }
   }, [datasetLoaded, loadDataset]);
+
+  // Initialize grid canvases refs
+  useEffect(() => {
+    gridCanvasesRef.current = Array(gridSize * gridSize).fill(null);
+  }, [gridSize]);
 
   // Render single digit when current index changes
   useEffect(() => {
@@ -44,36 +50,42 @@ const ExploreDatasetView = () => {
     }
   }, [datasetLoaded, trainImages, currentIndex, viewMode, gridSize]);
 
-  // Initialize grid canvases refs
-  useEffect(() => {
-    gridCanvasesRef.current = Array(gridSize * gridSize).fill(null);
-  }, [gridSize]);
-
   const handlePrevious = () => {
     setCurrentIndex(prev => 
-      prev > 0 ? prev - 1 : trainImages.length - 1
+      prev > 0 ? prev - 1 : (trainImages?.length || 1) - 1
     );
   };
 
   const handleNext = () => {
     setCurrentIndex(prev => 
-      prev < trainImages.length - 1 ? prev + 1 : 0
+      prev < (trainImages?.length || 1) - 1 ? prev + 1 : 0
     );
   };
 
   const handlePreviousGrid = () => {
     const gridCount = gridSize * gridSize;
     const currentGroup = Math.floor(currentIndex / gridCount);
-    const newGroup = currentGroup > 0 ? currentGroup - 1 : Math.floor((trainImages.length - 1) / gridCount);
+    const totalGroups = Math.ceil((trainImages?.length || 0) / gridCount);
+    const newGroup = currentGroup > 0 ? currentGroup - 1 : totalGroups - 1;
     setCurrentIndex(newGroup * gridCount);
   };
 
   const handleNextGrid = () => {
     const gridCount = gridSize * gridSize;
     const currentGroup = Math.floor(currentIndex / gridCount);
-    const maxGroup = Math.floor((trainImages.length - 1) / gridCount);
-    const newGroup = currentGroup < maxGroup ? currentGroup + 1 : 0;
+    const totalGroups = Math.ceil((trainImages?.length || 0) / gridCount);
+    const newGroup = currentGroup < totalGroups - 1 ? currentGroup + 1 : 0;
     setCurrentIndex(newGroup * gridCount);
+  };
+
+  const getCurrentPage = () => {
+    const gridCount = gridSize * gridSize;
+    return Math.floor(currentIndex / gridCount) + 1;
+  };
+
+  const getTotalPages = () => {
+    const gridCount = gridSize * gridSize;
+    return Math.ceil((trainImages?.length || 0) / gridCount);
   };
 
   if (!datasetLoaded || !trainImages || trainImages.length === 0) {
@@ -92,7 +104,7 @@ const ExploreDatasetView = () => {
       <div className="flex flex-col gap-4">
         <h2 className="text-2xl font-bold">Explore the MNIST Dataset</h2>
         <p className="text-muted-foreground">
-          The MNIST dataset contains images of handwritten digits from 0-9. 
+          The MNIST dataset contains {trainImages.length.toLocaleString()} images of handwritten digits from 0-9. 
           Each image is 28x28 pixels in grayscale. Explore the dataset to understand 
           what kind of data the neural network will learn from.
         </p>
@@ -140,7 +152,7 @@ const ExploreDatasetView = () => {
               
               <div className="text-center mb-4">
                 <p className="text-lg font-medium">Digit: {trainLabels[currentIndex]}</p>
-                <p className="text-sm text-muted-foreground">Image {currentIndex + 1} of {trainImages.length}</p>
+                <p className="text-sm text-muted-foreground">Image {currentIndex + 1} of {trainImages.length.toLocaleString()}</p>
               </div>
 
               <div className="flex justify-between w-full">
@@ -184,14 +196,21 @@ const ExploreDatasetView = () => {
             />
           </div>
           
-          <div className="flex justify-between mb-4">
-            <Button onClick={handlePreviousGrid} size="sm" variant="outline">
-              <ChevronLeft className="h-4 w-4 mr-2" /> Previous Page
-            </Button>
-            <Button onClick={handleNextGrid} size="sm" variant="outline">
-              Next Page <ChevronRight className="h-4 w-4 ml-2" />
-            </Button>
-          </div>
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious onClick={handlePreviousGrid} />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationLink>
+                  Page {getCurrentPage()} of {getTotalPages()}
+                </PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext onClick={handleNextGrid} />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
 
           <div 
             className="grid gap-2 mx-auto" 

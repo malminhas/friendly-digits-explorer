@@ -1,16 +1,25 @@
-
 // This is a simplified implementation to load and work with MNIST data in the browser
 
-// Load a pre-processed subset of MNIST data from a CDN
+// Load MNIST data from a reliable source
 export const loadMnistData = async () => {
   try {
-    // Fetch a JSON file with pre-processed MNIST data
-    // This is a smaller subset of the data to make it usable in the browser
-    const response = await fetch('https://storage.googleapis.com/learnjs-data/model-builder/mnist_images.png');
-    const dataBlob = await response.blob();
+    // Fetch pre-processed MNIST data
+    const [imagesResponse, labelsResponse] = await Promise.all([
+      fetch('https://storage.googleapis.com/tfjs-tutorials/mnist_images.png'),
+      fetch('https://storage.googleapis.com/tfjs-tutorials/mnist_labels_uint8')
+    ]);
     
-    // Create an image from the blob
+    if (!imagesResponse.ok || !labelsResponse.ok) {
+      throw new Error('Failed to fetch MNIST data');
+    }
+    
+    // Process the image data (contains all digit images)
+    const dataBlob = await imagesResponse.blob();
     const dataImg = await createImageBitmap(dataBlob);
+    
+    // Process the label data
+    const labelsArrayBuffer = await labelsResponse.arrayBuffer();
+    const labelsArray = new Uint8Array(labelsArrayBuffer);
     
     // Extract pixels from the image
     const canvas = document.createElement('canvas');
@@ -23,12 +32,12 @@ export const loadMnistData = async () => {
     }
     
     ctx.drawImage(dataImg, 0, 0);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     
-    // Generate synthetic MNIST data for demonstration purposes
-    // This is much faster than loading the real dataset in the browser
-    const numTrainImages = 1000; // Use a subset for browser performance
-    const numTestImages = 200;
+    // MNIST standard dimensions
+    const numTrainImages = 60000;
+    const numTestImages = 10000;
+    const digitWidth = 28;
+    const digitHeight = 28;
     const trainImages: number[][] = [];
     const trainLabels: number[] = [];
     const testImages: number[][] = [];
@@ -36,9 +45,7 @@ export const loadMnistData = async () => {
     
     // Helper to extract a digit image from the sprite sheet
     const extractDigit = (index: number): [number[], number] => {
-      const digitWidth = 28;
-      const digitHeight = 28;
-      const digitsPerRow = Math.floor(canvas.width / digitWidth);
+      const digitsPerRow = Math.floor(dataImg.width / digitWidth);
       
       const x = (index % digitsPerRow) * digitWidth;
       const y = Math.floor(index / digitsPerRow) * digitHeight;
@@ -48,30 +55,31 @@ export const loadMnistData = async () => {
       // Convert pixel data to a normalized array (0-1 values)
       const pixelArray: number[] = [];
       for (let i = 0; i < digitData.data.length; i += 4) {
-        // Use just the red channel (grayscale image) and normalize to 0-1
+        // Get grayscale value and normalize to 0-1
         pixelArray.push(digitData.data[i] / 255);
       }
       
-      // For demo purposes, determine the label based on the position
-      // In a real implementation, we would load actual labels
-      const label = index % 10;
+      // Get the correct label from the labels array
+      const label = labelsArray[index];
       
       return [pixelArray, label];
     };
     
-    // Generate training data
+    // Generate training data (first 60k images)
     for (let i = 0; i < numTrainImages; i++) {
       const [image, label] = extractDigit(i);
       trainImages.push(image);
       trainLabels.push(label);
     }
     
-    // Generate test data
+    // Generate test data (last 10k images)
     for (let i = 0; i < numTestImages; i++) {
       const [image, label] = extractDigit(numTrainImages + i);
       testImages.push(image);
       testLabels.push(label);
     }
+    
+    console.log(`Loaded ${trainImages.length} training images and ${testImages.length} test images`);
     
     return {
       trainImages,
@@ -82,12 +90,12 @@ export const loadMnistData = async () => {
   } catch (error) {
     console.error('Error loading MNIST data:', error);
     
-    // Fallback: Generate completely synthetic data if loading fails
+    // Fallback: Generate synthetic data if loading fails
     return generateSyntheticMnistData();
   }
 };
 
-// Generate synthetic MNIST-like data for demonstration
+// Generate synthetic MNIST-like data for demonstration as fallback
 const generateSyntheticMnistData = () => {
   const numTrainImages = 1000;
   const numTestImages = 200;
@@ -263,7 +271,7 @@ export const imageToMatrix = (image: number[]): number[][] => {
   return matrix;
 };
 
-// Utility to visualize a digit on a canvas element
+// Utility to visualize a digit on a canvas element - improved for clarity
 export const renderDigitToCanvas = (canvas: HTMLCanvasElement, image: number[]): void => {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -273,7 +281,7 @@ export const renderDigitToCanvas = (canvas: HTMLCanvasElement, image: number[]):
   
   for (let i = 0; i < image.length; i++) {
     const value = Math.floor(image[i] * 255);
-    // RGBA values (grayscale)
+    // RGBA values (grayscale with black background and white digits)
     imageData.data[i * 4] = value;     // R
     imageData.data[i * 4 + 1] = value; // G
     imageData.data[i * 4 + 2] = value; // B
