@@ -1,6 +1,6 @@
 
 import { useEffect, useRef } from 'react';
-import { useNeuralNetwork } from '@/context/NeuralNetworkContext';
+import { useNeuralNetwork } from '@/hooks/useNeuralNetworkContext';
 
 interface NeuralNetworkVisualizationProps {
   inputLayer: number;

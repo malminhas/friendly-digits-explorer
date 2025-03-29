@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { useNeuralNetwork } from '@/context/NeuralNetworkContext';
+import { useNeuralNetwork } from '@/hooks/useNeuralNetworkContext';
 import { Eraser, Pencil } from 'lucide-react';
 
 const InferenceView = () => {

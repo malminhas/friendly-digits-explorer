@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
 import NeuralNetworkVisualization from '@/components/NeuralNetworkVisualization';
-import { useNeuralNetwork } from '@/context/NeuralNetworkContext';
+import { useNeuralNetwork } from '@/hooks/useNeuralNetworkContext';
 import { Play, Pause, RefreshCw } from 'lucide-react';
 
 interface TrainingViewProps {
