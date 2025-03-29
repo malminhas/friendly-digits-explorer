@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +7,7 @@ import { renderDigitToCanvas } from '@/lib/mnist';
 import { useNeuralNetwork } from '@/context/NeuralNetworkContext';
 import { ChevronLeft, ChevronRight, Grid, Rows } from 'lucide-react';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { toast } from '@/components/ui/use-toast';
 
 const ExploreDatasetView = () => {
   const { trainImages, trainLabels, datasetLoaded, loadDataset } = useNeuralNetwork();
@@ -20,7 +20,18 @@ const ExploreDatasetView = () => {
 
   useEffect(() => {
     if (!datasetLoaded) {
-      loadDataset();
+      loadDataset().then(() => {
+        toast({
+          title: "Dataset Loaded",
+          description: "The MNIST dataset has been loaded successfully."
+        });
+      }).catch(error => {
+        toast({
+          title: "Error",
+          description: "Failed to load the MNIST dataset. Using fallback data.",
+          variant: "destructive"
+        });
+      });
     }
   }, [datasetLoaded, loadDataset]);
 
@@ -138,7 +149,7 @@ const ExploreDatasetView = () => {
                   ref={canvasRef} 
                   width={28} 
                   height={28} 
-                  className="border border-gray-200"
+                  className="border border-gray-200 bg-white"
                   style={{ 
                     width: `${digitSize}px`, 
                     height: `${digitSize}px`, 
@@ -156,10 +167,14 @@ const ExploreDatasetView = () => {
               </div>
 
               <div className="flex justify-between w-full">
-                <Button onClick={handlePrevious} size="icon" variant="outline">
+                <Button onClick={() => setCurrentIndex(prev => 
+                  prev > 0 ? prev - 1 : (trainImages?.length || 1) - 1
+                )} size="icon" variant="outline">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button onClick={handleNext} size="icon" variant="outline">
+                <Button onClick={() => setCurrentIndex(prev => 
+                  prev < (trainImages?.length || 1) - 1 ? prev + 1 : 0
+                )} size="icon" variant="outline">
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -229,7 +244,7 @@ const ExploreDatasetView = () => {
                     ref={el => gridCanvasesRef.current[idx] = el}
                     width={28}
                     height={28}
-                    className={`border ${hasImage ? 'border-gray-200' : 'border-transparent bg-gray-100'}`}
+                    className={`border ${hasImage ? 'border-gray-200 bg-white' : 'border-transparent bg-gray-100'}`}
                     style={{ 
                       width: '60px', 
                       height: '60px', 

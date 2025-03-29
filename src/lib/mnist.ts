@@ -1,82 +1,42 @@
+
 // This is a simplified implementation to load and work with MNIST data in the browser
 
-// Load MNIST data from a reliable source
+// Alternative MNIST data sources with more reliable URLs
+const MNIST_IMAGES_URL = 'https://raw.githubusercontent.com/cazala/mnist/master/data/mnist.json';
+
+// Load MNIST data from reliable sources
 export const loadMnistData = async () => {
   try {
-    // Fetch pre-processed MNIST data
-    const [imagesResponse, labelsResponse] = await Promise.all([
-      fetch('https://storage.googleapis.com/tfjs-tutorials/mnist_images.png'),
-      fetch('https://storage.googleapis.com/tfjs-tutorials/mnist_labels_uint8')
-    ]);
+    console.log("Attempting to load MNIST data from GitHub...");
+    const response = await fetch(MNIST_IMAGES_URL);
     
-    if (!imagesResponse.ok || !labelsResponse.ok) {
-      throw new Error('Failed to fetch MNIST data');
+    if (!response.ok) {
+      throw new Error(`Failed to fetch MNIST data: ${response.status}`);
     }
     
-    // Process the image data (contains all digit images)
-    const dataBlob = await imagesResponse.blob();
-    const dataImg = await createImageBitmap(dataBlob);
-    
-    // Process the label data
-    const labelsArrayBuffer = await labelsResponse.arrayBuffer();
-    const labelsArray = new Uint8Array(labelsArrayBuffer);
-    
-    // Extract pixels from the image
-    const canvas = document.createElement('canvas');
-    canvas.width = dataImg.width;
-    canvas.height = dataImg.height;
-    const ctx = canvas.getContext('2d');
-    
-    if (!ctx) {
-      throw new Error('Could not get canvas context');
-    }
-    
-    ctx.drawImage(dataImg, 0, 0);
-    
-    // MNIST standard dimensions
-    const numTrainImages = 60000;
-    const numTestImages = 10000;
-    const digitWidth = 28;
-    const digitHeight = 28;
+    // Parse the JSON data
+    const mnistData = await response.json();
+    console.log("Successfully loaded MNIST data");
+
+    // Process the MNIST data from JSON format
+    // The format is expected to be { training: [images, labels], test: [images, labels] }
     const trainImages: number[][] = [];
     const trainLabels: number[] = [];
     const testImages: number[][] = [];
     const testLabels: number[] = [];
     
-    // Helper to extract a digit image from the sprite sheet
-    const extractDigit = (index: number): [number[], number] => {
-      const digitsPerRow = Math.floor(dataImg.width / digitWidth);
-      
-      const x = (index % digitsPerRow) * digitWidth;
-      const y = Math.floor(index / digitsPerRow) * digitHeight;
-      
-      const digitData = ctx.getImageData(x, y, digitWidth, digitHeight);
-      
-      // Convert pixel data to a normalized array (0-1 values)
-      const pixelArray: number[] = [];
-      for (let i = 0; i < digitData.data.length; i += 4) {
-        // Get grayscale value and normalize to 0-1
-        pixelArray.push(digitData.data[i] / 255);
-      }
-      
-      // Get the correct label from the labels array
-      const label = labelsArray[index];
-      
-      return [pixelArray, label];
-    };
-    
-    // Generate training data (first 60k images)
-    for (let i = 0; i < numTrainImages; i++) {
-      const [image, label] = extractDigit(i);
-      trainImages.push(image);
-      trainLabels.push(label);
+    // Process training data
+    const trainingSet = mnistData.training;
+    for (let i = 0; i < trainingSet[0].length; i++) {
+      trainImages.push(trainingSet[0][i]);
+      trainLabels.push(trainingSet[1][i]);
     }
     
-    // Generate test data (last 10k images)
-    for (let i = 0; i < numTestImages; i++) {
-      const [image, label] = extractDigit(numTrainImages + i);
-      testImages.push(image);
-      testLabels.push(label);
+    // Process test data
+    const testSet = mnistData.test;
+    for (let i = 0; i < testSet[0].length; i++) {
+      testImages.push(testSet[0][i]);
+      testLabels.push(testSet[1][i]);
     }
     
     console.log(`Loaded ${trainImages.length} training images and ${testImages.length} test images`);
@@ -89,17 +49,17 @@ export const loadMnistData = async () => {
     };
   } catch (error) {
     console.error('Error loading MNIST data:', error);
+    console.log("Falling back to synthetic data generation");
     
     // Fallback: Generate synthetic data if loading fails
     return generateSyntheticMnistData();
   }
 };
 
-// Generate synthetic MNIST-like data for demonstration as fallback
+// Generate synthetic MNIST-like data for demonstration
 const generateSyntheticMnistData = () => {
   const numTrainImages = 1000;
   const numTestImages = 200;
-  const imageSize = 28 * 28; // 28x28 pixels
   
   const trainImages: number[][] = [];
   const trainLabels: number[] = [];
@@ -121,6 +81,8 @@ const generateSyntheticMnistData = () => {
     testImages.push(image);
     testLabels.push(label);
   }
+  
+  console.log('Using synthetic MNIST data as fallback');
   
   return {
     trainImages,
@@ -279,9 +241,11 @@ export const renderDigitToCanvas = (canvas: HTMLCanvasElement, image: number[]):
   const size = Math.sqrt(image.length);
   const imageData = ctx.createImageData(size, size);
   
+  // MNIST values are naturally inverted (white digits on black background)
+  // We'll invert them to show black digits on white background for better visibility
   for (let i = 0; i < image.length; i++) {
-    const value = Math.floor(image[i] * 255);
-    // RGBA values (grayscale with black background and white digits)
+    const value = Math.floor(255 - (image[i] * 255)); // Invert colors
+    // RGBA values (grayscale)
     imageData.data[i * 4] = value;     // R
     imageData.data[i * 4 + 1] = value; // G
     imageData.data[i * 4 + 2] = value; // B
