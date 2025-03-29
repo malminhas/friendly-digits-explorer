@@ -35,7 +35,12 @@ const GridDigitView = ({
         const idx = startIndex + i;
         if (canvas && idx < trainImages.length) {
           try {
-            renderDigitToCanvas(canvas, trainImages[idx]);
+            // Clear the canvas first for better rendering
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              renderDigitToCanvas(canvas, trainImages[idx]);
+            }
           } catch (err) {
             console.error(`Failed to render digit at index ${idx}:`, err);
           }

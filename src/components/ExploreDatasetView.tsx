@@ -32,7 +32,8 @@ const ExploreDatasetView = () => {
           });
         }
       }
-      setIsLoading(false);
+      // Short delay to ensure rendering has time to complete
+      setTimeout(() => setIsLoading(false), 100);
     };
     
     loadData();
