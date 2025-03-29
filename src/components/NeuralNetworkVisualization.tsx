@@ -49,9 +49,9 @@ const NeuralNetworkVisualization = ({
 
     // Calculate layer positions
     const layerX = {
-      input: width * 0.2,
+      input: width * 0.15,   // Moved left a bit to make more room for connections
       hidden: width * 0.5,
-      output: width * 0.8
+      output: width * 0.85   // Moved right a bit to make more room for connections and labels
     };
 
     // Draw connections first (behind nodes)
@@ -81,7 +81,7 @@ const NeuralNetworkVisualization = ({
             : `rgba(255, 0, 0, ${normalizedWeight * 0.7})`;
           
           // Determine line width based on weight magnitude
-          const lineWidth = normalizedWeight * 3;
+          const lineWidth = Math.max(normalizedWeight * 3, 0.5); // Ensure minimum visibility
           
           // Draw connection
           ctx.beginPath();
@@ -113,7 +113,7 @@ const NeuralNetworkVisualization = ({
             : `rgba(255, 0, 0, ${normalizedWeight * 0.7})`;
           
           // Determine line width based on weight magnitude
-          const lineWidth = normalizedWeight * 3;
+          const lineWidth = Math.max(normalizedWeight * 3, 0.5); // Ensure minimum visibility
           
           // Draw connection
           ctx.beginPath();
@@ -185,8 +185,8 @@ const NeuralNetworkVisualization = ({
       // Label each output node with its digit
       ctx.fillStyle = '#000';
       ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${i}`, layerX.output, y + nodeRadius * 3);
+      ctx.textAlign = 'left'; // Changed to left alignment for better spacing
+      ctx.fillText(`${i}`, layerX.output + nodeRadius * 2, y + 4); // Moved label to the right side of the node
     }
 
     // Output layer label
@@ -222,13 +222,14 @@ const NeuralNetworkVisualization = ({
         className="mx-auto"
       />
       
-      <div className="absolute bottom-0 left-4 flex items-center text-sm">
-        <span className="inline-flex items-center mr-4">
-          <span className="inline-block w-3 h-3 mr-1 bg-blue-500 rounded-full opacity-70"></span>
+      {/* Moved legend to the bottom with more space and better positioning */}
+      <div className="absolute bottom-12 left-0 right-0 flex justify-center gap-6 text-sm bg-white/80 py-2 px-4 rounded">
+        <span className="inline-flex items-center">
+          <span className="inline-block w-4 h-4 mr-2 bg-blue-500 rounded-full opacity-70"></span>
           Strong positive weight
         </span>
         <span className="inline-flex items-center">
-          <span className="inline-block w-3 h-3 mr-1 bg-red-500 rounded-full opacity-70"></span>
+          <span className="inline-block w-4 h-4 mr-2 bg-red-500 rounded-full opacity-70"></span>
           Strong negative weight
         </span>
       </div>

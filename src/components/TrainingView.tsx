@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -76,18 +75,18 @@ const TrainingView = ({ onTrainingComplete }: TrainingViewProps) => {
           <CardContent className="p-6 space-y-4">
             <h3 className="text-xl font-medium">Network Architecture</h3>
             
-            <div className="h-[400px] relative overflow-hidden">
+            <div className="h-[450px] relative overflow-hidden">
               <NeuralNetworkVisualization 
                 inputLayer={784}
                 hiddenLayer={128}
                 outputLayer={10}
                 showWeights={showWeights}
                 width={500}
-                height={400}
+                height={450}
               />
             </div>
             
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mt-8">
               <Button
                 variant="outline"
                 onClick={() => setShowWeights(!showWeights)}
