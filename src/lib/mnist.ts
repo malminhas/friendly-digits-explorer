@@ -1,13 +1,13 @@
 
 // This is a simplified implementation to load and work with MNIST data in the browser
 
-// Alternative MNIST data sources with more reliable URLs
-const MNIST_IMAGES_URL = 'https://raw.githubusercontent.com/cazala/mnist/master/data/mnist.json';
+// Try different reliable MNIST data sources
+const MNIST_IMAGES_URL = 'https://storage.googleapis.com/tfjs-tutorials/mnist_data.json';
 
 // Load MNIST data from reliable sources
 export const loadMnistData = async () => {
   try {
-    console.log("Attempting to load MNIST data from GitHub...");
+    console.log("Attempting to load MNIST data...");
     const response = await fetch(MNIST_IMAGES_URL);
     
     if (!response.ok) {
@@ -19,24 +19,38 @@ export const loadMnistData = async () => {
     console.log("Successfully loaded MNIST data");
 
     // Process the MNIST data from JSON format
-    // The format is expected to be { training: [images, labels], test: [images, labels] }
     const trainImages: number[][] = [];
     const trainLabels: number[] = [];
     const testImages: number[][] = [];
     const testLabels: number[] = [];
     
-    // Process training data
-    const trainingSet = mnistData.training;
-    for (let i = 0; i < trainingSet[0].length; i++) {
-      trainImages.push(trainingSet[0][i]);
-      trainLabels.push(trainingSet[1][i]);
-    }
-    
-    // Process test data
-    const testSet = mnistData.test;
-    for (let i = 0; i < testSet[0].length; i++) {
-      testImages.push(testSet[0][i]);
-      testLabels.push(testSet[1][i]);
+    // Handle different JSON formats that might be encountered
+    if (mnistData.images) {
+      // Handle format where data is in a single object
+      for (let i = 0; i < mnistData.images.length; i++) {
+        if (i < 60000) {
+          trainImages.push(mnistData.images[i]);
+          trainLabels.push(mnistData.labels[i]);
+        } else {
+          testImages.push(mnistData.images[i]);
+          testLabels.push(mnistData.labels[i]);
+        }
+      }
+    } else if (mnistData.training) {
+      // Handle format from cazala/mnist repo
+      const trainingSet = mnistData.training;
+      for (let i = 0; i < trainingSet[0].length; i++) {
+        trainImages.push(trainingSet[0][i]);
+        trainLabels.push(trainingSet[1][i]);
+      }
+      
+      const testSet = mnistData.test;
+      for (let i = 0; i < testSet[0].length; i++) {
+        testImages.push(testSet[0][i]);
+        testLabels.push(testSet[1][i]);
+      }
+    } else {
+      throw new Error("Unknown MNIST data format");
     }
     
     console.log(`Loaded ${trainImages.length} training images and ${testImages.length} test images`);
@@ -239,7 +253,15 @@ export const renderDigitToCanvas = (canvas: HTMLCanvasElement, image: number[]):
   if (!ctx) return;
   
   const size = Math.sqrt(image.length);
+  if (isNaN(size) || size <= 0) {
+    console.error("Invalid image data for rendering", image);
+    return;
+  }
+  
   const imageData = ctx.createImageData(size, size);
+  
+  // Clear the canvas first
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   
   // MNIST values are naturally inverted (white digits on black background)
   // We'll invert them to show black digits on white background for better visibility

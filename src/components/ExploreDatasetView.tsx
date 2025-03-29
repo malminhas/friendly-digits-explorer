@@ -11,26 +11,51 @@ const ExploreDatasetView = () => {
   const { trainImages, trainLabels, datasetLoaded, loadDataset } = useNeuralNetwork();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [viewMode, setViewMode] = useState<'single' | 'grid'>('single');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!datasetLoaded) {
-      loadDataset().then(() => {
-        toast({
-          title: "Dataset Loaded",
-          description: "The MNIST dataset has been loaded successfully."
-        });
-      }).catch(error => {
-        toast({
-          title: "Error",
-          description: "Failed to load the MNIST dataset. Using fallback data.",
-          variant: "destructive"
-        });
-      });
-    }
+    const loadData = async () => {
+      setIsLoading(true);
+      if (!datasetLoaded) {
+        try {
+          await loadDataset();
+          toast({
+            title: "Dataset Loaded",
+            description: "The MNIST dataset has been loaded successfully."
+          });
+        } catch (error) {
+          console.error('Error in dataset loading:', error);
+          toast({
+            title: "Using Fallback Data",
+            description: "Could not load MNIST dataset. Using synthetic data instead.",
+            variant: "destructive"
+          });
+        }
+      }
+      setIsLoading(false);
+    };
+    
+    loadData();
   }, [datasetLoaded, loadDataset]);
 
-  if (!datasetLoaded || !trainImages || trainImages.length === 0) {
+  if (isLoading) {
     return <LoadingSpinner />;
+  }
+
+  if (!trainImages || trainImages.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <p className="text-lg text-center">
+          No dataset found. Please refresh the page or check the console for errors.
+        </p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+        >
+          Refresh Page
+        </button>
+      </div>
+    );
   }
 
   return (

@@ -26,9 +26,13 @@ const SingleDigitView = ({
   // Render digit when current index changes
   useEffect(() => {
     if (trainImages && trainImages.length > 0 && canvasRef.current) {
-      renderDigitToCanvas(canvasRef.current, trainImages[currentIndex]);
+      try {
+        renderDigitToCanvas(canvasRef.current, trainImages[currentIndex]);
+      } catch (err) {
+        console.error("Failed to render digit:", err);
+      }
     }
-  }, [trainImages, currentIndex]);
+  }, [trainImages, currentIndex, digitSize]);
 
   const handlePrevious = () => {
     const newIndex = currentIndex > 0 ? currentIndex - 1 : (trainImages?.length || 1) - 1;

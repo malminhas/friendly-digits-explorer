@@ -34,7 +34,11 @@ const GridDigitView = ({
       gridCanvasesRef.current.forEach((canvas, i) => {
         const idx = startIndex + i;
         if (canvas && idx < trainImages.length) {
-          renderDigitToCanvas(canvas, trainImages[idx]);
+          try {
+            renderDigitToCanvas(canvas, trainImages[idx]);
+          } catch (err) {
+            console.error(`Failed to render digit at index ${idx}:`, err);
+          }
         }
       });
     }
@@ -112,22 +116,28 @@ const GridDigitView = ({
           
           return (
             <div key={idx} className="relative">
-              <canvas
-                ref={el => gridCanvasesRef.current[idx] = el}
-                width={28}
-                height={28}
-                className={`border ${hasImage ? 'border-gray-200 bg-white' : 'border-transparent bg-gray-100'}`}
-                style={{ 
-                  width: '60px', 
-                  height: '60px', 
-                  imageRendering: 'pixelated',
-                  display: hasImage ? 'block' : 'none'
-                }}
-              />
               {hasImage && (
-                <div className="absolute bottom-0 right-0 bg-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
-                  {trainLabels[imageIdx]}
-                </div>
+                <>
+                  <canvas
+                    ref={el => gridCanvasesRef.current[idx] = el}
+                    width={28}
+                    height={28}
+                    className="border border-gray-200 bg-white"
+                    style={{ 
+                      width: '60px', 
+                      height: '60px', 
+                      imageRendering: 'pixelated',
+                    }}
+                  />
+                  <div className="absolute bottom-0 right-0 bg-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                    {trainLabels[imageIdx]}
+                  </div>
+                </>
+              )}
+              {!hasImage && (
+                <div 
+                  className="w-[60px] h-[60px] border border-dashed border-gray-200 bg-gray-50"
+                ></div>
               )}
             </div>
           );
