@@ -197,22 +197,22 @@ export const NeuralNetworkProvider = ({ children }: { children: ReactNode }) => 
           }
 
           // Update weights and biases with accumulated gradients
-          const batchSize = batchEnd - batchStart;
+          const currentBatchSize = batchEnd - batchStart;
           for (let i = 0; i < 784; i++) {
             for (let j = 0; j < 128; j++) {
-              weights1[i][j] += learningRate * dw1[i][j] / batchSize;
+              weights1[i][j] += learningRate * dw1[i][j] / currentBatchSize;
             }
           }
 
           for (let j = 0; j < 128; j++) {
-            biases1[j] += learningRate * db1[j] / batchSize;
+            biases1[j] += learningRate * db1[j] / currentBatchSize;
             for (let k = 0; k < 10; k++) {
-              weights2[j][k] += learningRate * dw2[j][k] / batchSize;
+              weights2[j][k] += learningRate * dw2[j][k] / currentBatchSize;
             }
           }
 
           for (let k = 0; k < 10; k++) {
-            biases2[k] += learningRate * db2[k] / batchSize;
+            biases2[k] += learningRate * db2[k] / currentBatchSize;
           }
 
           // Allow UI to update by yielding to the event loop
