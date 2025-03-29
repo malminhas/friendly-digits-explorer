@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -114,7 +115,7 @@ const TrainingView = ({ onTrainingComplete }: TrainingViewProps) => {
                 <Slider
                   id="epochs"
                   min={1}
-                  max={20}
+                  max={100}
                   step={1}
                   value={[epochs]}
                   onValueChange={(value) => setEpochs(value[0])}

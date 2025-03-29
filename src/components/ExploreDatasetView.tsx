@@ -23,26 +23,31 @@ const ExploreDatasetView = () => {
     }
   }, [datasetLoaded, loadDataset]);
 
+  // Render single digit when current index changes
   useEffect(() => {
-    if (datasetLoaded && trainImages.length > 0 && viewMode === 'single' && canvasRef.current) {
+    if (datasetLoaded && trainImages && trainImages.length > 0 && viewMode === 'single' && canvasRef.current) {
       renderDigitToCanvas(canvasRef.current, trainImages[currentIndex]);
     }
   }, [datasetLoaded, trainImages, currentIndex, viewMode]);
 
+  // Render grid of digits
   useEffect(() => {
-    if (datasetLoaded && trainImages.length > 0 && viewMode === 'grid') {
+    if (datasetLoaded && trainImages && trainImages.length > 0 && viewMode === 'grid') {
       const startIndex = Math.floor(currentIndex / (gridSize * gridSize)) * gridSize * gridSize;
       
-      for (let i = 0; i < gridSize * gridSize; i++) {
+      gridCanvasesRef.current.forEach((canvas, i) => {
         const idx = startIndex + i;
-        const canvas = gridCanvasesRef.current[i];
-        
         if (canvas && idx < trainImages.length) {
           renderDigitToCanvas(canvas, trainImages[idx]);
         }
-      }
+      });
     }
   }, [datasetLoaded, trainImages, currentIndex, viewMode, gridSize]);
+
+  // Initialize grid canvases refs
+  useEffect(() => {
+    gridCanvasesRef.current = Array(gridSize * gridSize).fill(null);
+  }, [gridSize]);
 
   const handlePrevious = () => {
     setCurrentIndex(prev => 
@@ -71,12 +76,7 @@ const ExploreDatasetView = () => {
     setCurrentIndex(newGroup * gridCount);
   };
 
-  // Initialize grid canvases refs
-  useEffect(() => {
-    gridCanvasesRef.current = Array(gridSize * gridSize).fill(null);
-  }, [gridSize]);
-
-  if (!datasetLoaded) {
+  if (!datasetLoaded || !trainImages || trainImages.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
