@@ -1,227 +1,215 @@
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
-import { Slider } from '@/components/ui/slider';
-import NeuralNetworkVisualization from '@/components/NeuralNetworkVisualization';
-import { useNeuralNetwork } from '@/hooks/useNeuralNetworkContext';
-import { Play, Pause, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { useNeuralNetwork } from '@/context/NeuralNetworkContext';
+import NeuralNetworkVisualization from './NeuralNetworkVisualization';
+import { Button } from './ui/button';
+import { Slider } from './ui/slider';
+import { Progress } from './ui/progress';
+import { Card } from './ui/card';
+import { Badge } from './ui/badge';
+import { toast } from 'sonner';
 
 interface TrainingViewProps {
-  onTrainingComplete: () => void;
+  onTrainingComplete?: () => void;
 }
 
-const TrainingView = ({ onTrainingComplete }: TrainingViewProps) => {
-  const { trainModel, datasetLoaded, isTraining } = useNeuralNetwork();
-  const [epochs, setEpochs] = useState(5);
-  const [learningRate, setLearningRate] = useState(0.1);
-  const [batchSize, setBatchSize] = useState(32);
+export default function TrainingView({ onTrainingComplete }: TrainingViewProps) {
+  const { trainModel, isTraining, modelMetadata, weights1, weights2, biases1, biases2, exportModel } = useNeuralNetwork();
+  const [epochs, setEpochs] = useState(30);
+  const [learningRate, setLearningRate] = useState(0.05);
+  const [batchSize, setBatchSize] = useState(16);
+  const [hiddenNodes, setHiddenNodes] = useState(128);
   const [currentEpoch, setCurrentEpoch] = useState(0);
-  const [accuracy, setAccuracy] = useState(0);
-  const [showWeights, setShowWeights] = useState(true);
-  const [progress, setProgress] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const [trainingComplete, setTrainingComplete] = useState(false);
+  const [currentAccuracy, setCurrentAccuracy] = useState(0);
 
   const handleStartTraining = async () => {
-    setCurrentEpoch(0);
-    setAccuracy(0);
-    setProgress(0);
-    setTrainingComplete(false);
-    setIsPaused(false);
-
     try {
-      await trainModel(epochs, learningRate, batchSize, (epoch, acc) => {
-        setCurrentEpoch(epoch);
-        setAccuracy(acc);
-        setProgress((epoch / epochs) * 100);
-      });
+      setCurrentEpoch(0);
+      setCurrentAccuracy(0);
       
-      setTrainingComplete(true);
-      onTrainingComplete();
+      await trainModel(epochs, learningRate, batchSize, hiddenNodes, (epoch, accuracy) => {
+        console.log(`Progress update - Epoch ${epoch}/${epochs}, Accuracy: ${(accuracy * 100).toFixed(2)}%`);
+        setCurrentEpoch(epoch);
+        setCurrentAccuracy(accuracy);
+      });
+
+      onTrainingComplete?.();
     } catch (error) {
-      console.error('Training error:', error);
+      console.error('Training failed:', error);
+      toast.error('Training failed. Please try again.');
     }
   };
 
-  const handleResetTraining = () => {
-    setCurrentEpoch(0);
-    setAccuracy(0);
-    setProgress(0);
-    setTrainingComplete(false);
-  };
-
-  const togglePause = () => {
-    setIsPaused(!isPaused);
-    // In a real implementation, we would pause the training process
-    // For this demo, we'll keep it simple
+  const handleExport = () => {
+    try {
+      const modelJson = exportModel();
+      const blob = new Blob([modelJson], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'mnist-model.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Model exported successfully!');
+    } catch (error) {
+      toast.error('Failed to export model. Please train the model first.');
+    }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4">
+      <div>
         <h2 className="text-2xl font-bold">Train Your Neural Network</h2>
-        <p className="text-muted-foreground">
-          This is a simplified 3-layer neural network with 784 input nodes (one for each pixel),
-          128 nodes in the hidden layer, and 10 output nodes (one for each digit).
+        <p className="text-gray-600">
+          This is a simplified 3-layer neural network trained on a subset of 3,000 training images and 
+          1,000 test images from the full MNIST dataset of 60,000 training images and 10,000 test images.
+          The network has 784 input nodes (one for each pixel),{' '}
+          {hiddenNodes} nodes in the hidden layer, and 10 output nodes (one for each digit).
           Watch the connections change as the model learns!
         </p>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        <Card className="flex-1">
-          <CardContent className="p-6 space-y-4">
-            <h3 className="text-xl font-medium">Network Architecture</h3>
-            
-            <div className="h-[450px] relative overflow-hidden">
-              <NeuralNetworkVisualization 
-                inputLayer={784}
-                hiddenLayer={128}
-                outputLayer={10}
-                showWeights={showWeights}
-                width={500}
-                height={450}
-              />
+      {modelMetadata && (
+        <Card className="p-4 bg-blue-50">
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <h3 className="font-semibold">Using Saved Model</h3>
+              <Badge variant="secondary">
+                Accuracy: {(modelMetadata.accuracy * 100).toFixed(1)}%
+              </Badge>
             </div>
-            
-            <div className="flex items-center justify-between mt-8">
-              <Button
-                variant="outline"
-                onClick={() => setShowWeights(!showWeights)}
-                className="text-sm"
-              >
-                {showWeights ? 'Hide Weights' : 'Show Weights'}
-              </Button>
-              
-              <div className="text-sm text-muted-foreground italic">
-                {showWeights 
-                  ? 'Blue lines represent positive weights, red lines represent negative weights' 
-                  : 'Click to show connection weights'}
-              </div>
-            </div>
-          </CardContent>
+            <p className="text-sm text-gray-600">
+              Trained on {modelMetadata.trainedAt.split('T')[0]} using 3,000 training images and 1,000 test images with:
+              {' '}{modelMetadata.epochs} epochs,
+              {' '}learning rate {modelMetadata.learningRate},
+              {' '}batch size {modelMetadata.batchSize},
+              {' '}{modelMetadata.hiddenNodes} hidden nodes
+            </p>
+          </div>
         </Card>
+      )}
 
-        <Card className="w-full lg:w-80">
-          <CardContent className="p-6 space-y-6">
-            <div className="space-y-4">
-              <h3 className="text-xl font-medium">Training Parameters</h3>
-              
-              <div className="space-y-2">
-                <Label htmlFor="epochs">Epochs: {epochs}</Label>
-                <Slider
-                  id="epochs"
-                  min={1}
-                  max={100}
-                  step={1}
-                  value={[epochs]}
-                  onValueChange={(value) => setEpochs(value[0])}
-                  disabled={isTraining}
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-6">
+          {/* Left side: Network Visualization */}
+          <Card className="w-full">
+            <div className="p-6">
+              <div className="h-[600px] relative overflow-hidden">
+                <NeuralNetworkVisualization
+                  weights1={weights1}
+                  weights2={weights2}
+                  biases1={biases1}
+                  biases2={biases2}
+                  hiddenNodes={hiddenNodes}
                 />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="learning-rate">Learning Rate: {learningRate}</Label>
-                <Slider
-                  id="learning-rate"
-                  min={0.001}
-                  max={0.5}
-                  step={0.001}
-                  value={[learningRate]}
-                  onValueChange={(value) => setLearningRate(value[0])}
-                  disabled={isTraining}
-                />
-              </div>
+            </div>
+          </Card>
 
-              <div className="space-y-2">
-                <Label htmlFor="batch-size">Batch Size: {batchSize}</Label>
+          {/* Right side: Controls */}
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Network Architecture</h3>
+              <div>
+                <label className="text-sm text-gray-600">Hidden Layer Nodes: {hiddenNodes}</label>
+                <p className="text-xs text-gray-500 mb-2">Number of neurons in the hidden layer. More nodes increase the model's capacity to learn complex patterns but require more computation and may overfit.</p>
                 <Slider
-                  id="batch-size"
-                  min={1}
-                  max={128}
-                  step={1}
-                  value={[batchSize]}
-                  onValueChange={(value) => setBatchSize(value[0])}
+                  value={[hiddenNodes]}
+                  onValueChange={(value) => setHiddenNodes(value[0])}
+                  min={32}
+                  max={256}
+                  step={32}
+                  className="mt-2"
                   disabled={isTraining}
                 />
               </div>
             </div>
 
-            <div className="space-y-4">
-              <h3 className="text-xl font-medium">Training Progress</h3>
-              
-              {isTraining && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Epoch {currentEpoch}/{epochs}</span>
-                    <span>Accuracy: {(accuracy * 100).toFixed(2)}%</span>
-                  </div>
-                  <Progress value={progress} className="h-2" />
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Training Parameters</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-gray-600">Epochs: {epochs}</label>
+                  <p className="text-xs text-gray-500 mb-2">Number of complete passes through the training data. More epochs can lead to better accuracy but may cause overfitting.</p>
+                  <Slider
+                    value={[epochs]}
+                    onValueChange={(value) => setEpochs(value[0])}
+                    min={5}
+                    max={50}
+                    step={5}
+                    className="mt-2"
+                    disabled={isTraining}
+                  />
                 </div>
-              )}
-              
-              {!isTraining && !trainingComplete && (
-                <p className="text-sm text-muted-foreground">
-                  Click Start Training to begin the process.
+
+                <div>
+                  <label className="text-sm text-gray-600">Learning Rate: {learningRate}</label>
+                  <p className="text-xs text-gray-500 mb-2">Controls how much the model adjusts its weights. Higher values learn faster but may be unstable, lower values learn slower but more reliably.</p>
+                  <Slider
+                    value={[learningRate]}
+                    onValueChange={(value) => setLearningRate(value[0])}
+                    min={0.001}
+                    max={0.1}
+                    step={0.001}
+                    className="mt-2"
+                    disabled={isTraining}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-600">Batch Size: {batchSize}</label>
+                  <p className="text-xs text-gray-500 mb-2">Number of training examples processed together. Larger batches are more stable but use more memory, smaller batches add more randomness.</p>
+                  <Slider
+                    value={[batchSize]}
+                    onValueChange={(value) => setBatchSize(value[0])}
+                    min={16}
+                    max={128}
+                    step={16}
+                    className="mt-2"
+                    disabled={isTraining}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {isTraining && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Training Progress</span>
+                  <span>
+                    Epoch {currentEpoch}/{epochs} - Accuracy: {(currentAccuracy * 100).toFixed(1)}%
+                  </span>
+                </div>
+                <Progress value={(currentEpoch / epochs) * 100} className="bg-gray-100 [&>div]:bg-green-600" />
+                <p className="text-xs text-gray-500">
+                  Training with batch size {batchSize}. This may take a few minutes...
                 </p>
-              )}
-              
-              {trainingComplete && (
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">
-                    Training Complete!
-                  </div>
-                  <div className="text-sm">
-                    Final Accuracy: {(accuracy * 100).toFixed(2)}%
-                  </div>
-                </div>
-              )}
-              
-              <div className="flex gap-2">
-                {!isTraining && !trainingComplete && (
-                  <Button 
-                    onClick={handleStartTraining} 
-                    disabled={!datasetLoaded}
-                    className="flex-1"
-                  >
-                    <Play className="w-4 h-4 mr-2" />
-                    Start Training
-                  </Button>
-                )}
-                
-                {isTraining && (
-                  <>
-                    <Button 
-                      onClick={togglePause} 
-                      variant="outline" 
-                      className="flex-1"
-                    >
-                      {isPaused ? <Play className="w-4 h-4 mr-2" /> : <Pause className="w-4 h-4 mr-2" />}
-                      {isPaused ? 'Resume' : 'Pause'}
-                    </Button>
-                  </>
-                )}
-                
-                {trainingComplete && (
-                  <Button 
-                    onClick={handleResetTraining} 
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Reset
-                  </Button>
-                )}
               </div>
+            )}
+
+            <div className="flex gap-4">
+              <Button
+                onClick={handleStartTraining}
+                disabled={isTraining}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {isTraining ? 'Training...' : 'Start Training'}
+              </Button>
+              <Button
+                onClick={handleExport}
+                disabled={isTraining || !modelMetadata}
+                variant="outline"
+              >
+                Export Model
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       <Card>
-        <CardContent className="p-6">
+        <div className="p-6">
           <h3 className="text-xl font-medium mb-4">How Neural Networks Learn</h3>
           
           <div className="space-y-4 text-sm">
@@ -256,10 +244,8 @@ const TrainingView = ({ onTrainingComplete }: TrainingViewProps) => {
               (they decrease activation). The thickness of the line represents the strength of the connection.
             </p>
           </div>
-        </CardContent>
+        </div>
       </Card>
     </div>
   );
-};
-
-export default TrainingView;
+}

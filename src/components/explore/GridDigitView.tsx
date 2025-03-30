@@ -1,8 +1,8 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { renderDigitToCanvas } from '@/lib/mnist';
+import { generateSyntheticDigit } from '@/lib/mnist-data';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
 interface GridDigitViewProps {
@@ -18,135 +18,130 @@ const GridDigitView = ({
   currentIndex,
   setCurrentIndex
 }: GridDigitViewProps) => {
-  const [gridSize, setGridSize] = useState(5);
   const gridCanvasesRef = useRef<(HTMLCanvasElement | null)[]>([]);
+  const GRID_SIZE = 100; // 10x10 grid
+  const [canvasesInitialized, setCanvasesInitialized] = useState(false);
   
-  // Initialize grid canvases refs
+  // Initialize grid canvases refs and trigger initial render
   useEffect(() => {
-    gridCanvasesRef.current = Array(gridSize * gridSize).fill(null);
-  }, [gridSize]);
+    if (trainImages?.length > 0) {
+      console.log("Initializing canvases and preparing for initial render");
+      gridCanvasesRef.current = Array(GRID_SIZE).fill(null);
+      setCanvasesInitialized(true);
+    }
+  }, [trainImages]);
 
-  // Render grid of digits
+  // Render grid of digits once canvases are initialized
   useEffect(() => {
-    if (trainImages && trainImages.length > 0) {
-      const startIndex = Math.floor(currentIndex / (gridSize * gridSize)) * gridSize * gridSize;
-      
-      gridCanvasesRef.current.forEach((canvas, i) => {
-        const idx = startIndex + i;
-        if (canvas && idx < trainImages.length) {
-          try {
-            // Clear the canvas first for better rendering
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.clearRect(0, 0, canvas.width, canvas.height);
-              renderDigitToCanvas(canvas, trainImages[idx]);
+    if (!canvasesInitialized || !trainImages?.length) return;
+
+    console.log("Rendering grid with currentIndex:", currentIndex);
+    console.log("Number of training images:", trainImages.length);
+    console.log("First few labels:", trainLabels?.slice(0, 10));
+
+    // Clear all canvases first
+    gridCanvasesRef.current.forEach((canvas, i) => {
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+    });
+
+    // Small delay to ensure canvas refs are properly set
+    requestAnimationFrame(() => {
+      // Render actual training images
+      for (let i = 0; i < GRID_SIZE; i++) {
+        const imageIndex = currentIndex + i;
+        if (imageIndex < trainImages.length) {
+          const canvas = gridCanvasesRef.current[i];
+          if (canvas) {
+            try {
+              console.log(`Rendering digit at index ${imageIndex}, label: ${trainLabels[imageIndex]}`);
+              
+              // Ensure canvas is properly sized
+              canvas.width = 28;
+              canvas.height = 28;
+              
+              // Render the digit
+              renderDigitToCanvas(canvas, trainImages[imageIndex]);
+            } catch (error) {
+              console.error(`Error rendering digit ${i}:`, error);
             }
-          } catch (err) {
-            console.error(`Failed to render digit at index ${idx}:`, err);
           }
         }
-      });
-    }
-  }, [trainImages, currentIndex, gridSize]);
+      }
+    });
+  }, [trainImages, trainLabels, currentIndex, canvasesInitialized]);
 
   const handlePreviousGrid = () => {
-    const gridCount = gridSize * gridSize;
-    const currentGroup = Math.floor(currentIndex / gridCount);
-    const totalGroups = Math.ceil((trainImages?.length || 0) / gridCount);
-    const newGroup = currentGroup > 0 ? currentGroup - 1 : totalGroups - 1;
-    const newIndex = newGroup * gridCount;
-    setCurrentIndex(newIndex);
+    const startIdx = Math.max(0, currentIndex - GRID_SIZE);
+    setCurrentIndex(startIdx);
   };
 
   const handleNextGrid = () => {
-    const gridCount = gridSize * gridSize;
-    const currentGroup = Math.floor(currentIndex / gridCount);
-    const totalGroups = Math.ceil((trainImages?.length || 0) / gridCount);
-    const newGroup = currentGroup < totalGroups - 1 ? currentGroup + 1 : 0;
-    const newIndex = newGroup * gridCount;
-    setCurrentIndex(newIndex);
+    const nextIdx = Math.min(currentIndex + GRID_SIZE, (trainImages?.length || 0) - GRID_SIZE);
+    setCurrentIndex(nextIdx);
   };
 
   const getCurrentPage = () => {
-    const gridCount = gridSize * gridSize;
-    return Math.floor(currentIndex / gridCount) + 1;
+    return Math.floor(currentIndex / GRID_SIZE) + 1;
   };
 
   const getTotalPages = () => {
-    const gridCount = gridSize * gridSize;
-    return Math.ceil((trainImages?.length || 0) / gridCount);
+    return Math.ceil((trainImages?.length || 0) / GRID_SIZE);
   };
   
   return (
-    <div className="space-y-4">
-      <div className="w-full">
-        <Label htmlFor="grid-size">Grid Size: {gridSize}x{gridSize}</Label>
-        <Slider
-          id="grid-size"
-          min={2}
-          max={10}
-          step={1}
-          value={[gridSize]}
-          onValueChange={(value) => setGridSize(value[0])}
-          className="mt-2"
-        />
+    <div className="flex flex-col space-y-6">
+      <div className="flex flex-col space-y-4">
+        <div className="flex items-center justify-between mb-4">
+          <Label>Showing 100 digits (10x10 grid)</Label>
+          <div className="text-sm text-muted-foreground">
+            Starting from example {currentIndex + 1}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between px-4 mb-6">
+          <PaginationPrevious 
+            onClick={handlePreviousGrid}
+            className="cursor-pointer"
+          />
+          <div className="text-center px-8">
+            Set {getCurrentPage()} of {getTotalPages()}
+          </div>
+          <PaginationNext 
+            onClick={handleNextGrid}
+            className="cursor-pointer"
+          />
+        </div>
       </div>
-      
-      <Pagination>
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious onClick={handlePreviousGrid} />
-          </PaginationItem>
-          <PaginationItem>
-            <PaginationLink>
-              Page {getCurrentPage()} of {getTotalPages()}
-            </PaginationLink>
-          </PaginationItem>
-          <PaginationItem>
-            <PaginationNext onClick={handleNextGrid} />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
 
       <div 
-        className="grid gap-2 mx-auto" 
+        className="grid gap-4 mx-auto p-4" 
         style={{ 
-          gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
+          gridTemplateColumns: 'repeat(10, 1fr)',
+          gridTemplateRows: 'repeat(10, 1fr)',
           width: 'fit-content'
         }}
       >
-        {Array.from({ length: gridSize * gridSize }).map((_, idx) => {
-          const imageIdx = Math.floor(currentIndex / (gridSize * gridSize)) * gridSize * gridSize + idx;
-          const hasImage = imageIdx < trainImages.length;
-          
-          return (
-            <div key={idx} className="relative">
-              {hasImage && (
-                <>
-                  <canvas
-                    ref={el => gridCanvasesRef.current[idx] = el}
-                    width={28}
-                    height={28}
-                    className="border border-gray-200 bg-white"
-                    style={{ 
-                      width: '60px', 
-                      height: '60px', 
-                      imageRendering: 'pixelated',
-                    }}
-                  />
-                  <div className="absolute bottom-0 right-0 bg-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
-                    {trainLabels[imageIdx]}
-                  </div>
-                </>
-              )}
-              {!hasImage && (
-                <div 
-                  className="w-[60px] h-[60px] border border-dashed border-gray-200 bg-gray-50"
-                ></div>
-              )}
+        {Array.from({ length: GRID_SIZE }).map((_, idx) => (
+          <div key={idx} className="relative">
+            <canvas
+              ref={el => gridCanvasesRef.current[idx] = el}
+              className="border border-gray-200 bg-white"
+              style={{ 
+                width: '100px', 
+                height: '100px', 
+                imageRendering: 'pixelated',
+              }}
+            />
+            <div className="absolute bottom-0 right-0 bg-primary text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold">
+              {trainLabels[currentIndex + idx]}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );

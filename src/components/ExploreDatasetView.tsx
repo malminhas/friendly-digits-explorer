@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNeuralNetwork } from '@/hooks/useNeuralNetworkContext';
 import { toast } from '@/hooks/use-toast';
@@ -10,7 +9,7 @@ import GridDigitView from './explore/GridDigitView';
 const ExploreDatasetView = () => {
   const { trainImages, trainLabels, datasetLoaded, loadDataset } = useNeuralNetwork();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [viewMode, setViewMode] = useState<'single' | 'grid'>('single');
+  const [viewMode, setViewMode] = useState<'single' | 'grid'>('grid');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -19,21 +18,31 @@ const ExploreDatasetView = () => {
       if (!datasetLoaded) {
         try {
           await loadDataset();
-          toast({
-            title: "Dataset Loaded",
-            description: "The MNIST dataset has been loaded successfully."
-          });
+          // Ensure rendering is complete before showing toast
+          setIsLoading(false);
+          // Small delay before showing toast to ensure smooth transition
+          setTimeout(() => {
+            toast({
+              title: "Dataset Loaded",
+              description: "The MNIST dataset has been loaded successfully.",
+              duration: 1000,
+            });
+          }, 100);
         } catch (error) {
           console.error('Error in dataset loading:', error);
-          toast({
-            title: "Using Fallback Data",
-            description: "Could not load MNIST dataset. Using synthetic data instead.",
-            variant: "destructive"
-          });
+          setIsLoading(false);
+          setTimeout(() => {
+            toast({
+              title: "Using Fallback Data",
+              description: "Could not load MNIST dataset. Using synthetic data instead.",
+              variant: "destructive",
+              duration: 1000,
+            });
+          }, 100);
         }
+      } else {
+        setIsLoading(false);
       }
-      // Short delay to ensure rendering has time to complete
-      setTimeout(() => setIsLoading(false), 300);
     };
     
     loadData();

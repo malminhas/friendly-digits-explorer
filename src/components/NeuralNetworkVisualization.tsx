@@ -1,240 +1,255 @@
-
 import { useEffect, useRef } from 'react';
-import { useNeuralNetwork } from '@/hooks/useNeuralNetworkContext';
 
 interface NeuralNetworkVisualizationProps {
-  inputLayer: number;
-  hiddenLayer: number;
-  outputLayer: number;
-  showWeights?: boolean;
-  width?: number;
-  height?: number;
+  weights1: number[][] | null;
+  weights2: number[][] | null;
+  biases1: number[] | null;
+  biases2: number[] | null;
+  hiddenNodes: number;
 }
 
-const NeuralNetworkVisualization = ({
-  inputLayer = 784,
-  hiddenLayer = 128,
-  outputLayer = 10,
-  showWeights = true,
-  width = 800,
-  height = 400
-}: NeuralNetworkVisualizationProps) => {
-  const { weights1, weights2 } = useNeuralNetwork();
+const INPUT_NODES = 784;  // 28x28 pixels
+const OUTPUT_NODES = 10;  // 10 digits (0-9)
+const NODE_RADIUS = 4;  // Slightly smaller nodes for better density
+const LAYER_SPACING = 160;  // Adjusted for better proportions
+const VERTICAL_SPACING = 8;  // Further reduced spacing to fit all nodes
+const MAX_VISIBLE_NODES = 64;  // Show all hidden layer nodes
+const CONNECTION_OPACITY_BACKGROUND = 0.08;  // More subtle background connections
+const CONNECTION_OPACITY_FOREGROUND = 0.4;  // Clearer foreground connections
+const CONNECTION_SCALE = 2.5;  // Scale factor for connection thickness
+const TOP_PADDING = 50;  // Reduced from 100 to move everything up
+
+export default function NeuralNetworkVisualization({
+  weights1,
+  weights2,
+  biases1,
+  biases2,
+  hiddenNodes
+}: NeuralNetworkVisualizationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Calculate how many nodes to display
-  const maxNodesToShow = {
-    input: 20,    // Show at most 20 input nodes to avoid clutter
-    hidden: 15,   // Show at most 15 hidden nodes to avoid clutter
-    output: 10    // Show all output nodes (0-9)
-  };
-
-  useEffect(() => {
-    if (!canvasRef.current || !weights1 || !weights2) return;
-
+  const drawNetwork = () => {
     const canvas = canvasRef.current;
+    if (!canvas) return;
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Set canvas size based on container size
+    const container = canvas.parentElement;
+    if (container) {
+      canvas.width = Math.max(600, container.clientWidth);
+      canvas.height = Math.max(800, container.clientHeight);
+    } else {
+      canvas.width = 600;
+      canvas.height = 800;
+    }
 
-    // Calculate node positions
-    const nodeRadius = 8;
-    const spacingY = {
-      input: height / (maxNodesToShow.input + 1),
-      hidden: height / (maxNodesToShow.hidden + 1),
-      output: height / (maxNodesToShow.output + 1)
-    };
+    // Clear canvas with white background
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Calculate layer positions
-    const layerX = {
-      input: width * 0.15,   // Moved left a bit to make more room for connections
-      hidden: width * 0.5,
-      output: width * 0.85   // Moved right a bit to make more room for connections and labels
-    };
+    // Calculate visible nodes first
+    const visibleInputNodes = Math.min(INPUT_NODES, MAX_VISIBLE_NODES);
+    const visibleHiddenNodes = Math.min(hiddenNodes, MAX_VISIBLE_NODES);
+    const inputStep = Math.max(1, Math.floor(INPUT_NODES / visibleInputNodes));
+    const hiddenStep = Math.max(1, Math.floor(hiddenNodes / visibleHiddenNodes));
+    
+    // Calculate total height needed for nodes
+    const totalNodesHeight = visibleInputNodes * VERTICAL_SPACING;
+    
+    // Calculate Y positions to center vertically with more space for labels
+    const inputY = TOP_PADDING + (totalNodesHeight / 2);
+    const hiddenY = inputY;
+    const outputY = inputY;
 
-    // Draw connections first (behind nodes)
-    if (showWeights && weights1 && weights2) {
-      // Draw a subset of connections to avoid clutter
-      const inputStep = Math.floor(inputLayer / maxNodesToShow.input);
-      const hiddenStep = Math.floor(hiddenLayer / maxNodesToShow.hidden);
+    const totalWidth = LAYER_SPACING * 2;
+    const startX = (canvas.width - totalWidth) / 2;
 
-      // Draw connections between input and hidden layers
-      for (let i = 0; i < maxNodesToShow.input; i++) {
-        const inputIndex = i * inputStep;
-        const inputY = (i + 1) * spacingY.input;
+    const inputX = startX;
+    const hiddenX = inputX + LAYER_SPACING;
+    const outputX = hiddenX + LAYER_SPACING;
 
-        for (let j = 0; j < maxNodesToShow.hidden; j++) {
-          const hiddenIndex = j * hiddenStep;
-          const hiddenY = (j + 1) * spacingY.hidden;
+    // Draw connections if weights are available
+    if (weights1?.length === INPUT_NODES && weights2?.length === hiddenNodes) {
+      // Draw background connections
+      ctx.globalAlpha = CONNECTION_OPACITY_BACKGROUND;
 
-          // Get the weight value and determine connection color and width
-          const weight = weights1[inputIndex][hiddenIndex];
-          const absWeight = Math.abs(weight);
-          const maxWeight = 0.5; // Normalize weight for visualization
-          const normalizedWeight = Math.min(absWeight / maxWeight, 1);
-          
-          // Determine color based on weight sign
-          const weightColor = weight > 0 
-            ? `rgba(0, 128, 255, ${normalizedWeight * 0.7})`
-            : `rgba(255, 0, 0, ${normalizedWeight * 0.7})`;
-          
-          // Determine line width based on weight magnitude
-          const lineWidth = Math.max(normalizedWeight * 3, 0.5); // Ensure minimum visibility
-          
-          // Draw connection
-          ctx.beginPath();
-          ctx.moveTo(layerX.input, inputY);
-          ctx.lineTo(layerX.hidden, hiddenY);
-          ctx.strokeStyle = weightColor;
-          ctx.lineWidth = lineWidth;
-          ctx.stroke();
+      // Draw connections between input and hidden layer
+      for (let i = 0; i < INPUT_NODES; i += inputStep * 2) {
+        const startY = inputY + ((i / inputStep) - visibleInputNodes / 2) * VERTICAL_SPACING;
+
+        for (let j = 0; j < hiddenNodes; j += hiddenStep * 2) {
+          if (weights1[i] && weights1[i][j] !== undefined) {
+            const endY = hiddenY + ((j / hiddenStep) - visibleHiddenNodes / 2) * VERTICAL_SPACING;
+            const weight = weights1[i][j];
+
+            ctx.beginPath();
+            ctx.moveTo(inputX, startY);
+            ctx.lineTo(hiddenX, endY);
+            ctx.strokeStyle = weight > 0 ? '#4338ca' : '#dc2626';
+            ctx.lineWidth = Math.abs(weight) * CONNECTION_SCALE;
+            ctx.stroke();
+          }
         }
       }
 
-      // Draw connections between hidden and output layers
-      for (let j = 0; j < maxNodesToShow.hidden; j++) {
-        const hiddenIndex = j * hiddenStep;
-        const hiddenY = (j + 1) * spacingY.hidden;
+      // Draw foreground connections
+      ctx.globalAlpha = CONNECTION_OPACITY_FOREGROUND;
 
-        for (let k = 0; k < outputLayer; k++) {
-          const outputY = (k + 1) * spacingY.output;
+      // Draw main visible connections
+      for (let i = 0; i < visibleInputNodes; i++) {
+        const inputIdx = i * inputStep;
+        const startY = inputY + (i - visibleInputNodes / 2) * VERTICAL_SPACING;
 
-          // Get the weight value and determine connection color and width
-          const weight = weights2[hiddenIndex][k];
-          const absWeight = Math.abs(weight);
-          const maxWeight = 0.5; // Normalize weight for visualization
-          const normalizedWeight = Math.min(absWeight / maxWeight, 1);
-          
-          // Determine color based on weight sign
-          const weightColor = weight > 0 
-            ? `rgba(0, 128, 255, ${normalizedWeight * 0.7})`
-            : `rgba(255, 0, 0, ${normalizedWeight * 0.7})`;
-          
-          // Determine line width based on weight magnitude
-          const lineWidth = Math.max(normalizedWeight * 3, 0.5); // Ensure minimum visibility
-          
-          // Draw connection
-          ctx.beginPath();
-          ctx.moveTo(layerX.hidden, hiddenY);
-          ctx.lineTo(layerX.output, outputY);
-          ctx.strokeStyle = weightColor;
-          ctx.lineWidth = lineWidth;
-          ctx.stroke();
+        for (let j = 0; j < visibleHiddenNodes; j++) {
+          const hiddenIdx = j * hiddenStep;
+          if (weights1[inputIdx] && weights1[inputIdx][hiddenIdx] !== undefined) {
+            const endY = hiddenY + (j - visibleHiddenNodes / 2) * VERTICAL_SPACING;
+            const weight = weights1[inputIdx][hiddenIdx];
+
+            ctx.beginPath();
+            ctx.moveTo(inputX, startY);
+            ctx.lineTo(hiddenX, endY);
+            ctx.strokeStyle = weight > 0 ? '#4338ca' : '#dc2626';
+            ctx.lineWidth = Math.abs(weight) * CONNECTION_SCALE;
+            ctx.stroke();
+          }
         }
       }
+
+      // Draw connections to output layer
+      for (let i = 0; i < visibleHiddenNodes; i++) {
+        const hiddenIdx = i * hiddenStep;
+        const startY = hiddenY + (i - visibleHiddenNodes / 2) * VERTICAL_SPACING;
+
+        for (let j = 0; j < OUTPUT_NODES; j++) {
+          if (weights2[hiddenIdx] && weights2[hiddenIdx][j] !== undefined) {
+            const endY = outputY + (j - OUTPUT_NODES / 2) * VERTICAL_SPACING * 1.5;
+            const weight = weights2[hiddenIdx][j];
+
+            ctx.beginPath();
+            ctx.moveTo(hiddenX, startY);
+            ctx.lineTo(outputX, endY);
+            ctx.strokeStyle = weight > 0 ? '#4338ca' : '#dc2626';
+            ctx.lineWidth = Math.abs(weight) * CONNECTION_SCALE;
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Reset opacity for nodes
+      ctx.globalAlpha = 1.0;
     }
 
-    // Draw nodes
-    // Input layer nodes
-    ctx.fillStyle = '#6366f1';
-    ctx.strokeStyle = '#4f46e5';
-    ctx.lineWidth = 1;
-    const drawInputCount = Math.min(inputLayer, maxNodesToShow.input);
-    const inputStep = Math.floor(inputLayer / drawInputCount);
-    
-    for (let i = 0; i < drawInputCount; i++) {
-      const y = (i + 1) * spacingY.input;
+    // Draw nodes with a subtle shadow effect
+    const drawNode = (x: number, y: number, label?: string, isInputNode: boolean = false) => {
+      // Draw shadow
+      ctx.beginPath();
+      ctx.arc(x + 1, y + 1, NODE_RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+      ctx.fill();
+
       // Draw node
       ctx.beginPath();
-      ctx.arc(layerX.input, y, nodeRadius, 0, Math.PI * 2);
+      ctx.arc(x, y, NODE_RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = '#6366f1';
       ctx.fill();
+      ctx.strokeStyle = '#4338ca';
+      ctx.lineWidth = 1;
       ctx.stroke();
+
+      if (label) {
+        ctx.fillStyle = '#374151';
+        ctx.font = '11px system-ui';
+        ctx.textAlign = isInputNode ? 'right' : 'left';
+        const labelX = isInputNode ? x - NODE_RADIUS * 2 : x + NODE_RADIUS * 2;
+        ctx.fillText(label, labelX, y + 4);
+      }
+    };
+
+    // Draw nodes for each layer
+    // Draw input layer nodes
+    for (let i = 0; i < visibleInputNodes; i++) {
+      const y = inputY + (i - visibleInputNodes / 2) * VERTICAL_SPACING;
+      const nodeIndex = i * inputStep;
+      drawNode(inputX, y, nodeIndex.toString(), true);
     }
 
-    // Input layer label
-    ctx.fillStyle = '#000';
-    ctx.font = '14px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`Input Layer (784 nodes)`, layerX.input, height - 10);
-
-    // Hidden layer nodes
-    ctx.fillStyle = '#8b5cf6';
-    ctx.strokeStyle = '#7c3aed';
-    const drawHiddenCount = Math.min(hiddenLayer, maxNodesToShow.hidden);
-    const hiddenStep = Math.floor(hiddenLayer / drawHiddenCount);
-    
-    for (let i = 0; i < drawHiddenCount; i++) {
-      const y = (i + 1) * spacingY.hidden;
-      // Draw node
-      ctx.beginPath();
-      ctx.arc(layerX.hidden, y, nodeRadius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+    // Draw hidden layer nodes
+    for (let i = 0; i < visibleHiddenNodes; i++) {
+      const y = hiddenY + (i - visibleHiddenNodes / 2) * VERTICAL_SPACING;
+      const nodeIndex = Math.floor(i * (hiddenNodes / visibleHiddenNodes));
+      drawNode(hiddenX, y, nodeIndex.toString());
     }
 
-    // Hidden layer label
-    ctx.fillStyle = '#000';
-    ctx.font = '14px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`Hidden Layer (128 nodes)`, layerX.hidden, height - 10);
+    // Draw output layer nodes with more spacing
+    for (let i = 0; i < OUTPUT_NODES; i++) {
+      const y = outputY + (i - OUTPUT_NODES / 2) * VERTICAL_SPACING * 1.5;
+      drawNode(outputX, y, i.toString());
+    }
 
-    // Output layer nodes
-    ctx.fillStyle = '#ec4899';
-    ctx.strokeStyle = '#db2777';
-    
-    for (let i = 0; i < outputLayer; i++) {
-      const y = (i + 1) * spacingY.output;
-      // Draw node
-      ctx.beginPath();
-      ctx.arc(layerX.output, y, nodeRadius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+    // Draw layer labels
+    const drawLayerLabel = (x: number, y: number, mainText: string, subText: string, isInputLayer: boolean = false) => {
+      ctx.textAlign = isInputLayer ? 'right' : 'left';
+      const labelX = isInputLayer ? x - 100 : x + 100;
       
-      // Label each output node with its digit
-      ctx.fillStyle = '#000';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'left'; // Changed to left alignment for better spacing
-      ctx.fillText(`${i}`, layerX.output + nodeRadius * 2, y + 4); // Moved label to the right side of the node
-    }
-
-    // Output layer label
-    ctx.fillStyle = '#000';
-    ctx.font = '14px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`Output Layer (10 nodes)`, layerX.output, height - 10);
-
-    // Draw the ellipsis for skipped nodes
-    const drawEllipsis = (x: number, y: number) => {
-      ctx.fillStyle = '#000';
-      ctx.font = '14px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('⋮', x, y);
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 13px system-ui';
+      ctx.fillText(mainText, labelX, y - 10);
+      ctx.font = '12px system-ui';
+      ctx.fillText(subText, labelX, y + 10);
     };
 
-    if (inputLayer > maxNodesToShow.input) {
-      drawEllipsis(layerX.input, height * 0.5);
-    }
+    // Draw labels next to their respective layers
+    drawLayerLabel(inputX, inputY, 'Input Layer', `(${INPUT_NODES} nodes)`, true);
+    drawLayerLabel(outputX, outputY, 'Output Layer', '(10 nodes)');
+
+    // Draw hidden layer label at the bottom
+    ctx.textAlign = 'center';
+    const hiddenLabelY = canvas.height - 50;
+    ctx.font = 'bold 13px system-ui';
+    ctx.fillText('Hidden Layer', hiddenX, hiddenLabelY);
+    ctx.font = '12px system-ui';
+    ctx.fillText(`(${hiddenNodes} nodes)`, hiddenX, hiddenLabelY + 20);
+  };
+
+  // Set up resize observer
+  useEffect(() => {
+    const observer = new ResizeObserver(() => {
+      drawNetwork();
+    });
     
-    if (hiddenLayer > maxNodesToShow.hidden) {
-      drawEllipsis(layerX.hidden, height * 0.5);
+    if (canvasRef.current?.parentElement) {
+      observer.observe(canvasRef.current.parentElement);
     }
 
-  }, [weights1, weights2, showWeights, inputLayer, hiddenLayer, outputLayer, height, width]);
+    return () => observer.disconnect();
+  }, []);
+
+  // Draw network when props change
+  useEffect(() => {
+    if (weights1 && weights2) {
+      console.log('Network weights updated:', {
+        sample_weights1: weights1[0].slice(0, 3),
+        sample_weights2: weights2[0].slice(0, 3)
+      });
+      drawNetwork();
+    }
+  }, [weights1, weights2, biases1, biases2, hiddenNodes]);
+
+  if (!weights1 || !weights2 || !biases1 || !biases2) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <p className="text-gray-500">Initializing network...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative w-full overflow-hidden">
-      <canvas
-        ref={canvasRef}
-        width={width}
-        height={height}
-        className="mx-auto"
-      />
-      
-      {/* Moved legend to the bottom with more space and better positioning */}
-      <div className="absolute bottom-12 left-0 right-0 flex justify-center gap-6 text-sm bg-white/80 py-2 px-4 rounded">
-        <span className="inline-flex items-center">
-          <span className="inline-block w-4 h-4 mr-2 bg-blue-500 rounded-full opacity-70"></span>
-          Strong positive weight
-        </span>
-        <span className="inline-flex items-center">
-          <span className="inline-block w-4 h-4 mr-2 bg-red-500 rounded-full opacity-70"></span>
-          Strong negative weight
-        </span>
-      </div>
-    </div>
+    <canvas
+      ref={canvasRef}
+      className="w-full h-[800px] bg-white"
+    />
   );
-};
-
-export default NeuralNetworkVisualization;
+}
