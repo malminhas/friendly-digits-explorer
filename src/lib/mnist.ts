@@ -1,25 +1,15 @@
 // This is a simplified implementation to load and work with MNIST data in the browser
 
-// Function to parse IDX file format
-function parseIDXFile(buffer: Uint8Array): number[][] | number[] {
+// Function to parse IDX file format with subset loading
+function parseIDXFile(buffer: Uint8Array, subsampleRatio: number = 1): number[][] | number[] {
   const header = new DataView(buffer.buffer);
-  
-  // Log header information
-  console.log("File header:", {
-    byte0: header.getUint8(0),
-    byte1: header.getUint8(1),
-    byte2: header.getUint8(2),
-    byte3: header.getUint8(3)
-  });
   
   // Check magic number (first two bytes should be 0)
   const magicNumber = header.getInt32(0, false); // Read as big-endian 32-bit int
-  console.log("Magic number:", magicNumber);
   
   // The third byte is the data type (0x08 for unsigned byte)
   // The fourth byte is the number of dimensions
   const numDimensions = magicNumber & 0xFF; // Get last byte
-  console.log("Number of dimensions:", numDimensions);
   
   if (numDimensions !== 1 && numDimensions !== 3) {
     throw new Error(`Unsupported number of dimensions: ${numDimensions}`);
@@ -30,30 +20,34 @@ function parseIDXFile(buffer: Uint8Array): number[][] | number[] {
     dimensions.push(header.getUint32(4 + i * 4, false)); // big-endian
   }
   
-  console.log("File dimensions:", dimensions);
-  
   const dataOffset = 4 + numDimensions * 4;
-  console.log("Data offset:", dataOffset);
   
   if (numDimensions === 1) {
-    // Labels file (60000 labels for training, 10000 for testing)
-    const labels = new Array(dimensions[0]);
-    for (let i = 0; i < dimensions[0]; i++) {
-      labels[i] = buffer[dataOffset + i];
+    // Labels file
+    const totalLabels = dimensions[0];
+    const subsetSize = Math.floor(totalLabels * subsampleRatio);
+    const stride = Math.floor(1 / subsampleRatio);
+    
+    const labels = new Array(subsetSize);
+    for (let i = 0; i < subsetSize; i++) {
+      labels[i] = buffer[dataOffset + i * stride];
     }
     return labels;
   } else {
-    // Images file (60000x28x28 for training, 10000x28x28 for testing)
-    const numImages = dimensions[0];
+    // Images file
+    const totalImages = dimensions[0];
     const height = dimensions[1];
     const width = dimensions[2];
     const imageSize = width * height;
+    const subsetSize = Math.floor(totalImages * subsampleRatio);
+    const stride = Math.floor(1 / subsampleRatio);
     
-    const images: number[][] = new Array(numImages);
-    for (let i = 0; i < numImages; i++) {
+    const images: number[][] = new Array(subsetSize);
+    for (let i = 0; i < subsetSize; i++) {
       const image = new Array(imageSize);
+      const baseOffset = dataOffset + (i * stride) * imageSize;
       for (let j = 0; j < imageSize; j++) {
-        image[j] = buffer[dataOffset + i * imageSize + j] / 255.0;
+        image[j] = buffer[baseOffset + j] / 255.0;
       }
       images[i] = image;
     }
@@ -71,58 +65,55 @@ export async function loadMnistData(): Promise<{
   try {
     console.log("Loading MNIST data...");
     
-    // Load training data
-    const trainImagesResponse = await fetch('/data/train-images.idx3-ubyte');
-    const trainLabelsResponse = await fetch('/data/train-labels.idx1-ubyte');
-    const testImagesResponse = await fetch('/data/t10k-images.idx3-ubyte');
-    const testLabelsResponse = await fetch('/data/t10k-labels.idx1-ubyte');
+    // Define subsample ratios directly (5% for training, 10% for testing)
+    const trainSubsampleRatio = 0.05;
+    const testSubsampleRatio = 0.10;
+    
+    // Load training data with subsampling
+    const [trainImagesResponse, trainLabelsResponse] = await Promise.all([
+      fetch('/data/train-images.idx3-ubyte'),
+      fetch('/data/train-labels.idx1-ubyte')
+    ]);
 
-    if (!trainImagesResponse.ok || !trainLabelsResponse.ok || 
-        !testImagesResponse.ok || !testLabelsResponse.ok) {
-      throw new Error('Failed to load MNIST data');
+    if (!trainImagesResponse.ok || !trainLabelsResponse.ok) {
+      throw new Error('Failed to load training data');
     }
 
-    const trainImagesBuffer = await trainImagesResponse.arrayBuffer();
-    const trainLabelsBuffer = await trainLabelsResponse.arrayBuffer();
-    const testImagesBuffer = await testImagesResponse.arrayBuffer();
-    const testLabelsBuffer = await testLabelsResponse.arrayBuffer();
+    const [trainImagesBuffer, trainLabelsBuffer] = await Promise.all([
+      trainImagesResponse.arrayBuffer(),
+      trainLabelsResponse.arrayBuffer()
+    ]);
 
-    console.log("Parsing data...");
+    // Parse training data with subsampling
+    const trainImages = parseIDXFile(new Uint8Array(trainImagesBuffer), trainSubsampleRatio) as number[][];
+    const trainLabels = parseIDXFile(new Uint8Array(trainLabelsBuffer), trainSubsampleRatio) as number[];
 
-    // Parse training data
-    const trainImages = parseIDXFile(new Uint8Array(trainImagesBuffer)) as number[][];
-    const trainLabels = parseIDXFile(new Uint8Array(trainLabelsBuffer)) as number[];
-    const testImages = parseIDXFile(new Uint8Array(testImagesBuffer)) as number[][];
-    const testLabels = parseIDXFile(new Uint8Array(testLabelsBuffer)) as number[];
+    // Load test data with subsampling
+    const [testImagesResponse, testLabelsResponse] = await Promise.all([
+      fetch('/data/t10k-images.idx3-ubyte'),
+      fetch('/data/t10k-labels.idx1-ubyte')
+    ]);
 
-    console.log("Preprocessing data...");
+    if (!testImagesResponse.ok || !testLabelsResponse.ok) {
+      throw new Error('Failed to load test data');
+    }
 
-    // Use only 5% of training data and 10% of test data for faster training
-    const trainSize = Math.floor(trainImages.length * 0.05);
-    const testSize = Math.floor(testImages.length * 0.1);
+    const [testImagesBuffer, testLabelsBuffer] = await Promise.all([
+      testImagesResponse.arrayBuffer(),
+      testLabelsResponse.arrayBuffer()
+    ]);
 
-    // Create shuffled indices for both training and test sets
-    const trainIndices = Array.from({ length: trainImages.length }, (_, i) => i)
-      .sort(() => Math.random() - 0.5)
-      .slice(0, trainSize);
-    
-    const testIndices = Array.from({ length: testImages.length }, (_, i) => i)
-      .sort(() => Math.random() - 0.5)
-      .slice(0, testSize);
+    // Parse test data with subsampling
+    const testImages = parseIDXFile(new Uint8Array(testImagesBuffer), testSubsampleRatio) as number[][];
+    const testLabels = parseIDXFile(new Uint8Array(testLabelsBuffer), testSubsampleRatio) as number[];
 
-    // Select reduced datasets
-    const reducedTrainImages = trainIndices.map(i => trainImages[i]);
-    const reducedTrainLabels = trainIndices.map(i => trainLabels[i]);
-    const reducedTestImages = testIndices.map(i => testImages[i]);
-    const reducedTestLabels = testIndices.map(i => testLabels[i]);
-
-    console.log(`Using ${reducedTrainImages.length} training images and ${reducedTestImages.length} test images`);
+    console.log(`Loaded ${trainImages.length} training images and ${testImages.length} test images`);
     
     return {
-      trainImages: reducedTrainImages,
-      trainLabels: reducedTrainLabels,
-      testImages: reducedTestImages,
-      testLabels: reducedTestLabels
+      trainImages,
+      trainLabels,
+      testImages,
+      testLabels
     };
   } catch (error) {
     console.error('Error loading MNIST data:', error);

@@ -1,4 +1,3 @@
-
 import { Brain } from 'lucide-react';
 
 const AppHeader = () => {
@@ -9,7 +8,7 @@ const AppHeader = () => {
           <Brain className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Neural Network Explorer</h1>
+          <h1 className="text-2xl font-bold">MNIST Neural Network Explorer</h1>
           <p className="text-muted-foreground">Demystifying neural networks with MNIST digits</p>
         </div>
       </div>

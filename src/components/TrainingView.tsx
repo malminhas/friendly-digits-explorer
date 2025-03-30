@@ -66,7 +66,7 @@ export default function TrainingView({ onTrainingComplete }: TrainingViewProps) 
           1,000 test images from the full MNIST dataset of 60,000 training images and 10,000 test images.
           The network has 784 input nodes (one for each pixel),{' '}
           {hiddenNodes} nodes in the hidden layer, and 10 output nodes (one for each digit).
-          Watch the connections change as the model learns!
+          Training is performed entirely in JavaScript on your CPU, making it accessible but slower than GPU-accelerated frameworks like TensorFlow or PyTorch.
         </p>
       </div>
 
@@ -74,7 +74,7 @@ export default function TrainingView({ onTrainingComplete }: TrainingViewProps) 
         <Card className="p-4 bg-blue-50">
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
-              <h3 className="font-semibold">Using Saved Model</h3>
+              <h3 className="font-semibold">Saved Model</h3>
               <Badge variant="secondary">
                 Accuracy: {(modelMetadata.accuracy * 100).toFixed(1)}%
               </Badge>
@@ -84,7 +84,7 @@ export default function TrainingView({ onTrainingComplete }: TrainingViewProps) 
               {' '}{modelMetadata.epochs} epochs,
               {' '}learning rate {modelMetadata.learningRate},
               {' '}batch size {modelMetadata.batchSize},
-              {' '}{modelMetadata.hiddenNodes} hidden nodes
+              {' '}{modelMetadata.hiddenNodes} hidden nodes.
             </p>
           </div>
         </Card>
@@ -183,7 +183,7 @@ export default function TrainingView({ onTrainingComplete }: TrainingViewProps) 
                 </div>
                 <Progress value={(currentEpoch / epochs) * 100} className="bg-gray-100 [&>div]:bg-green-600" />
                 <p className="text-xs text-gray-500">
-                  Training with batch size {batchSize}. This may take a few minutes...
+                  Training with batch size {batchSize}. This may take a few minutes since computation is done on CPU...
                 </p>
               </div>
             )}
@@ -213,35 +213,50 @@ export default function TrainingView({ onTrainingComplete }: TrainingViewProps) 
           <h3 className="text-xl font-medium mb-4">How Neural Networks Learn</h3>
           
           <div className="space-y-4 text-sm">
-            <p>
-              <strong>Learning process:</strong> When training a neural network, it adjusts the weights 
-              of connections between neurons based on how wrong its predictions are.
+            <p className="text-muted-foreground">
+              <strong>Learning process:</strong> Training a neural network involves iteratively adjusting the <strong>weights</strong> and <strong>biases</strong> of connections between neurons to minimize prediction errors. This implementation uses the <strong>backpropagation algorithm</strong> with <strong>stochastic gradient descent</strong>, running entirely in JavaScript on your CPU.
             </p>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-3 bg-muted rounded-md">
-                <h4 className="font-medium mb-2">Forward Pass</h4>
-                <p>Input data is passed through the network, with each connection multiplying the data by its weight. 
-                   The neural network makes a prediction based on the current weights.</p>
+                <h4 className="font-medium mb-2 text-foreground">Forward Pass</h4>
+                <p className="text-muted-foreground">Each training image (<strong>784 pixels</strong>) is fed through the network. Each neuron computes a weighted sum of its 
+                   inputs, applies an <strong>activation function</strong>, and passes the result to the next layer.</p>
               </div>
               
               <div className="p-3 bg-muted rounded-md">
-                <h4 className="font-medium mb-2">Error Calculation</h4>
-                <p>The network compares its prediction with the correct answer and calculates the error. 
-                   This tells us how wrong the network is.</p>
+                <h4 className="font-medium mb-2 text-foreground">Error Calculation</h4>
+                <p className="text-muted-foreground">The network compares its prediction with the <strong>true label</strong> using <strong>cross-entropy loss</strong>. 
+                   This measures how far off the prediction is from the correct answer, like a score of how well the network is doing.</p>
               </div>
               
               <div className="p-3 bg-muted rounded-md">
-                <h4 className="font-medium mb-2">Backward Pass</h4>
-                <p>The network updates all weights based on their contribution to the error. 
-                   Connections that lead to wrong answers are weakened, while useful connections are strengthened.</p>
+                <h4 className="font-medium mb-2 text-foreground">Backward Pass</h4>
+                <p className="text-muted-foreground">The error is sent backwards through the network to update the weights. Each connection is adjusted based on how much it 
+                   contributed to the mistake, using the <strong>learning rate</strong> to control how big these adjustments are.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div className="p-3 bg-muted rounded-md">
+                <h4 className="font-medium mb-2 text-foreground">ReLU Activation</h4>
+                <p className="text-muted-foreground">Think of <strong>ReLU</strong> (Rectified Linear Unit) as a simple on/off switch with dimming capabilities. When a neuron receives 
+                   positive input, it passes that value through unchanged (like a dimmer). When the input is negative, it turns off completely (outputs zero). 
+                   This simple behavior helps the network learn to recognize important patterns in the digits while ignoring irrelevant information.</p>
+              </div>
+              
+              <div className="p-3 bg-muted rounded-md">
+                <h4 className="font-medium mb-2 text-foreground">Softmax Output</h4>
+                <p className="text-muted-foreground">The <strong>softmax function</strong> works like a voting system for digit recognition. It takes the network's raw scores for each digit 
+                   and converts them into percentages that add up to 100%. The digit with the highest percentage becomes the network's guess, and that 
+                   percentage tells us how confident the network is about its answer.</p>
               </div>
             </div>
             
-            <p>
-              <strong>What you're seeing:</strong> In the visualization, blue connections represent positive weights 
-              (they increase the activation of the next neuron), while red connections represent negative weights 
-              (they decrease activation). The thickness of the line represents the strength of the connection.
+            <p className="text-muted-foreground">
+              <strong>What you're seeing:</strong> The visualization shows how neurons are connected in the network. <strong>Blue lines</strong> show 
+              positive connections (encouraging recognition), while <strong>red lines</strong> show negative connections (discouraging recognition). 
+              Thicker lines mean stronger connections. Watch how these connections change as the network learns to recognize different digit features!
             </p>
           </div>
         </div>

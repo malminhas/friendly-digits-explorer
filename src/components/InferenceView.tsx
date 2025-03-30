@@ -219,6 +219,37 @@ const InferenceView = () => {
         </p>
       </div>
 
+      <Card className="p-6">
+        <div className="space-y-4 text-sm">
+          <h3 className="text-xl font-medium mb-4">How Inference Works</h3>
+          <p className="text-muted-foreground">
+            During <strong>inference (testing)</strong>, we use the trained model's <strong>weights</strong> and <strong>biases</strong> to make predictions on new digits. 
+            Unlike training, no learning occurs - we only perform the <strong>forward pass</strong> through the network:
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-3 bg-muted rounded-md">
+              <h4 className="font-medium mb-2 text-foreground">Input Processing</h4>
+              <p className="text-muted-foreground">The input digit (whether from MNIST test set or hand-drawn) is converted to a <strong>28x28 grayscale image</strong> 
+                 and <strong>normalized</strong> to match the training data format. Each pixel becomes a value between <strong>0 and 1</strong>.</p>
+            </div>
+            <div className="p-3 bg-muted rounded-md">
+              <h4 className="font-medium mb-2 text-foreground">Network Computation</h4>
+              <p className="text-muted-foreground">The processed image (<strong>784 values</strong>) is fed through the network using the trained weights. The hidden layer 
+                 uses <strong>ReLU activation</strong>, and the output layer uses <strong>softmax</strong> to produce probabilities for each digit (0-9).</p>
+            </div>
+            <div className="p-3 bg-muted rounded-md">
+              <h4 className="font-medium mb-2 text-foreground">Prediction Output</h4>
+              <p className="text-muted-foreground">The network outputs <strong>10 probabilities</strong> - one for each digit. The digit with the <strong>highest probability</strong> becomes 
+                 the prediction. The <strong>confidence percentage</strong> shows how sure the model is about its prediction.</p>
+            </div>
+          </div>
+          <p className="text-muted-foreground">
+            For hand-drawn digits, additional <strong>preprocessing</strong> ensures your drawing matches the MNIST style as closely as possible. 
+            The better your digit matches the MNIST writing style (<strong>centered</strong>, <strong>proper thickness</strong>), the more accurate the prediction will be.
+          </p>
+        </div>
+      </Card>
+
       <Tabs defaultValue="mnist" className="w-full">
         <TabsList className="w-full grid grid-cols-3 gap-4">
           <TabsTrigger value="mnist">MNIST Test Images</TabsTrigger>
