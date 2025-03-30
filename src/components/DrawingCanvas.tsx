@@ -28,7 +28,7 @@ export default function DrawingCanvas() {
     ctx.strokeStyle = 'black';
   }, []);
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     setIsDrawing(true);
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -37,8 +37,18 @@ export default function DrawingCanvas() {
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    let x, y;
+
+    if ('touches' in e) {
+      // Touch event
+      e.preventDefault(); // Prevent scrolling while drawing
+      x = e.touches[0].clientX - rect.left;
+      y = e.touches[0].clientY - rect.top;
+    } else {
+      // Mouse event
+      x = e.clientX - rect.left;
+      y = e.clientY - rect.top;
+    }
 
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -46,12 +56,7 @@ export default function DrawingCanvas() {
     ctx.stroke();
   };
 
-  const stopDrawing = () => {
-    setIsDrawing(false);
-    makePrediction();
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;
 
     const canvas = canvasRef.current;
@@ -61,11 +66,26 @@ export default function DrawingCanvas() {
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    let x, y;
+
+    if ('touches' in e) {
+      // Touch event
+      e.preventDefault(); // Prevent scrolling while drawing
+      x = e.touches[0].clientX - rect.left;
+      y = e.touches[0].clientY - rect.top;
+    } else {
+      // Mouse event
+      x = e.clientX - rect.left;
+      y = e.clientY - rect.top;
+    }
 
     ctx.lineTo(x, y);
     ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+    makePrediction();
   };
 
   const clear = () => {
@@ -167,9 +187,13 @@ export default function DrawingCanvas() {
                 width={200}
                 height={200}
                 onMouseDown={startDrawing}
-                onMouseUp={stopDrawing}
                 onMouseMove={draw}
+                onMouseUp={stopDrawing}
                 onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
+                onTouchCancel={stopDrawing}
                 className="touch-none"
               />
             </div>
