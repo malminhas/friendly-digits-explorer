@@ -193,7 +193,7 @@ The application can be deployed either locally on your machine or remotely on a 
 
 2. From the `terraform` directory, run:
    ```bash
-   terraform apply -var="environment=local" -auto-approve
+   $ terraform apply -var="environment=local" -auto-approve
    ```
 
 3. Access the application at [http://localhost:8081](http://localhost:8081)
@@ -204,7 +204,7 @@ The application can be deployed either locally on your machine or remotely on a 
 
 2. From the `terraform` directory, run:
    ```bash
-   terraform apply -var="environment=remote" -auto-approve
+   $ terraform apply -var="environment=remote" -auto-approve
    ```
 
 3. Access the application at `http://your-droplet-ip:8081`
@@ -231,17 +231,17 @@ The Terraform configuration:
 
 1. If the container fails to start, check the logs:
    ```bash
-   docker logs friendly-digits-explorer
+   $ docker logs friendly-digits-explorer
    ```
 
 2. If the image fails to load on the remote server:
    ```bash
-   ssh -i your-key root@your-droplet-ip "docker images"
+   $ ssh -i your-key root@your-droplet-ip "docker images"
    ```
 
 3. To clean up and start fresh:
    ```bash
-   terraform destroy -auto-approve
+   $ terraform destroy -auto-approve
    ```
 
 ### Customizing the Build Platform
@@ -250,11 +250,11 @@ You can control which architecture the Docker image is built for using the `buil
 
 - **Apple Silicon Mac (M1/M2/M3):**
   ```bash
-  terraform apply -var="environment=local" -var="build_platform=linux/arm64" -auto-approve
+  $ terraform apply -var="environment=local" -var="build_platform=linux/arm64" -auto-approve
   ```
 - **Intel Mac or remote/x86:**
   ```bash
-  terraform apply -var="environment=local" -var="build_platform=linux/amd64" -auto-approve
+  $ terraform apply -var="environment=local" -var="build_platform=linux/amd64" -auto-approve
   ```
 - **Default:** If you do not specify, it will use `linux/amd64`.
 
