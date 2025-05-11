@@ -51,6 +51,9 @@ override.tf.json
 .terraformrc
 terraform.rc
 .terraform.lock.hcl
+terraform/droplet_key
+terraform/droplet_key.pub
+terraform/friendly-digits-explorer.tar
 
 # Docker
 .docker/
