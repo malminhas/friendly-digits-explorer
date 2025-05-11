@@ -25,8 +25,8 @@ An interactive web application for exploring and understanding neural networks t
 
 1. Clone the repository:
    ```bash
-   $ git clone https://github.com/yourusername/mnist-neural-network-explorer.git
-   $ cd mnist-neural-network-explorer
+   $ git clone https://github.com/malminhas/friendly-digits-explorer.git
+   $ cd friendly-digits-explorer
    ```
 
 2. Install dependencies:
@@ -39,7 +39,7 @@ An interactive web application for exploring and understanding neural networks t
    $ npm run dev
    ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
+4. Open [http://localhost:8081](http://localhost:8081) in your browser
 
 ## Project Structure
 
@@ -210,4 +210,111 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+## Deployment
+
+The application can be deployed either locally on your machine or remotely on a DigitalOcean droplet using Terraform.
+
+### Prerequisites
+
+- Docker installed on your machine
+- Terraform installed (for remote deployment)
+- SSH key pair (for remote deployment)
+- DigitalOcean droplet (for remote deployment)
+
+### Local Deployment
+
+1. Build the Docker image:
+   ```bash
+   docker buildx build --platform linux/amd64 -t friendly-digits-explorer:latest .
+   ```
+
+2. Run the container:
+   ```bash
+   docker run -d -p 8081:8081 --name friendly-digits-explorer friendly-digits-explorer:latest
+   ```
+
+3. Access the application at [http://localhost:8081](http://localhost:8081)
+
+### Remote Deployment using Terraform
+
+1. Navigate to the terraform directory:
+   ```bash
+   cd terraform
+   ```
+
+2. Create a `friendly-digits.tfvars` file with your configuration:
+   ```hcl
+   droplet_ip = "your-droplet-ip"
+   private_key_path = "path/to/your/private/key"
+   container_name = "friendly-digits-explorer"
+   container_port = 8081
+   host_port = 8081
+   ```
+
+3. Initialize Terraform:
+   ```bash
+   terraform init
+   ```
+
+4. Apply the configuration:
+   ```bash
+   terraform apply -var-file="friendly-digits.tfvars" -var="environment=remote" -auto-approve
+   ```
+
+5. Access the application at `http://your-droplet-ip:8081`
+
+### Terraform Commands Reference
+
+- `terraform init`: Initialize Terraform and download required providers
+- `terraform plan`: Show the execution plan without making changes
+- `terraform apply`: Apply the changes to create/update resources
+- `terraform destroy`: Remove all resources created by Terraform
+- `terraform state list`: List all resources in the current state
+- `terraform state show <resource>`: Show details of a specific resource
+
+### Deployment Workflow
+
+The Terraform configuration:
+1. Builds the Docker image locally using buildx
+2. Saves the image to a tar file
+3. Copies the tar file to the remote server
+4. Loads the image on the remote server
+5. Starts the container with the specified configuration
+
+### Troubleshooting
+
+1. If the container fails to start, check the logs:
+   ```bash
+   docker logs friendly-digits-explorer
+   ```
+
+2. If the image fails to load on the remote server:
+   ```bash
+   ssh -i your-key root@your-droplet-ip "docker images"
+   ```
+
+3. To clean up and start fresh:
+   ```bash
+   terraform destroy -var-file="friendly-digits.tfvars" -var="environment=remote" -auto-approve
+   ```
+
+### Customizing the Build Platform
+
+You can control which architecture the Docker image is built for using the `build_platform` variable. This is useful if you want to run the container natively on your Mac (Apple Silicon) or for remote x86 servers.
+
+- **Apple Silicon Mac (M1/M2/M3):**
+  ```bash
+  terraform apply -var="environment=local" -var="build_platform=linux/arm64" -auto-approve
+  ```
+- **Intel Mac or remote/x86:**
+  ```bash
+  terraform apply -var="environment=local" -var="build_platform=linux/amd64" -auto-approve
+  ```
+- **Default:** If you do not specify, it will use `linux/amd64`.
+
+You can also set this in your `friendly-digits.tfvars` file:
+```hcl
+build_platform = "linux/arm64" # or "linux/amd64"
 ```
