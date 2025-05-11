@@ -103,7 +103,7 @@ resource "null_resource" "run_container" {
     }
     inline = [
       "docker rm -f ${var.container_name} 2>/dev/null || true",
-      "docker run -d --name ${var.container_name} -p ${var.host_port}:${var.container_port} --log-driver json-file --log-opt max-size=10m --log-opt max-file=3 ${var.container_name}:latest"
+      "docker run -d --restart unless-stopped --name ${var.container_name} -p ${var.host_port}:${var.container_port} --log-driver json-file --log-opt max-size=10m --log-opt max-file=3 ${var.container_name}:latest"
     ]
   }
 } 
