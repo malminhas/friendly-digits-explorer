@@ -25,18 +25,18 @@ An interactive web application for exploring and understanding neural networks t
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/mnist-neural-network-explorer.git
-   cd mnist-neural-network-explorer
+   $ git clone https://github.com/yourusername/mnist-neural-network-explorer.git
+   $ cd mnist-neural-network-explorer
    ```
 
 2. Install dependencies:
    ```bash
-   npm install
+   $ npm install
    ```
 
 3. Run the development server:
    ```bash
-   npm run dev
+   $ npm run dev
    ```
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser
