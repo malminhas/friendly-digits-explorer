@@ -71,8 +71,8 @@ export async function loadMnistData(): Promise<{
     
     // Load training data with subsampling
     const [trainImagesResponse, trainLabelsResponse] = await Promise.all([
-      fetch('/data/train-images.idx3-ubyte'),
-      fetch('/data/train-labels.idx1-ubyte')
+      fetch(`${import.meta.env.BASE_URL}data/train-images.idx3-ubyte`),
+      fetch(`${import.meta.env.BASE_URL}data/train-labels.idx1-ubyte`)
     ]);
 
     if (!trainImagesResponse.ok || !trainLabelsResponse.ok) {
@@ -90,8 +90,8 @@ export async function loadMnistData(): Promise<{
 
     // Load test data with subsampling
     const [testImagesResponse, testLabelsResponse] = await Promise.all([
-      fetch('/data/t10k-images.idx3-ubyte'),
-      fetch('/data/t10k-labels.idx1-ubyte')
+      fetch(`${import.meta.env.BASE_URL}data/t10k-images.idx3-ubyte`),
+      fetch(`${import.meta.env.BASE_URL}data/t10k-labels.idx1-ubyte`)
     ]);
 
     if (!testImagesResponse.ok || !testLabelsResponse.ok) {
