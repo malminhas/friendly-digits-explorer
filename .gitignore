@@ -60,3 +60,5 @@ terraform/friendly-digits-explorer.tar
 
 # Large data files
 public/data/*.idx*
+
+scripts/public
