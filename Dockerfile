@@ -8,7 +8,6 @@ ENV VITE_BASE=${VITE_BASE}
 ENV VITE_BASENAME=${VITE_BASENAME}
 
 COPY package*.json ./
-COPY bun.lockb ./
 COPY vite.config.ts ./
 COPY . .
 RUN npm ci
