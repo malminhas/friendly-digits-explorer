@@ -1,4 +1,5 @@
 // This is a simplified implementation to load and work with MNIST data in the browser
+import { generateSyntheticDigit } from './mnist-data';
 
 // Function to parse IDX file format with subset loading
 function parseIDXFile(buffer: Uint8Array, subsampleRatio: number = 1): number[][] | number[] {
@@ -55,6 +56,28 @@ function parseIDXFile(buffer: Uint8Array, subsampleRatio: number = 1): number[][
   }
 }
 
+// Generate fallback synthetic data when real MNIST files can't be loaded
+function generateSyntheticData(numImages: number, isTest: boolean = false): {
+  images: number[][];
+  labels: number[];
+} {
+  console.warn(`Using synthetic ${isTest ? 'test' : 'training'} data as fallback for ${numImages} images`);
+  
+  const images: number[][] = [];
+  const labels: number[] = [];
+  
+  for (let i = 0; i < numImages; i++) {
+    // Generate digit from 0-9
+    const digit = Math.floor(Math.random() * 10);
+    const image = generateSyntheticDigit(digit);
+    
+    images.push(image);
+    labels.push(digit);
+  }
+  
+  return { images, labels };
+}
+
 // Load MNIST data from the original IDX files
 export async function loadMnistData(): Promise<{
   trainImages: number[][];
@@ -69,28 +92,37 @@ export async function loadMnistData(): Promise<{
     const trainSubsampleRatio = 0.05;
     const testSubsampleRatio = 0.10;
     
-    // Determine the correct base path for data files
-    const baseUrl = window.location.origin + import.meta.env.BASE_URL;
-    const possiblePaths = [
-      new URL('data/', new URL(import.meta.env.BASE_URL, window.location.origin)).href,
-      new URL('data/', baseUrl).href,
-      baseUrl + 'data/',
-      window.location.origin + '/data/',
-      import.meta.env.BASE_URL + 'data/'
+    // Define possible paths to check for MNIST data
+    const basePaths = [
+      // Root-relative paths
+      '/data/',
+      // Origin-relative paths
+      `${window.location.origin}/data/`,
+      // Current path-relative paths
+      './data/',
+      // Base URL paths
+      `${import.meta.env.BASE_URL}data/`,
+      `${new URL('data/', window.location.href).href}`,
     ];
     
-    console.log("Trying to load MNIST data from possible paths:", possiblePaths);
+    console.log("Trying to load MNIST data from possible paths:", basePaths);
     
     let trainImagesResponse, trainLabelsResponse, testImagesResponse, testLabelsResponse;
     let successPath = '';
     
     // Try each possible path until one works
-    for (const path of possiblePaths) {
+    for (const path of basePaths) {
       try {
         const url = `${path}train-images.idx3-ubyte`;
         console.log(`[MNIST] Attempting to fetch: ${url}`);
-        trainImagesResponse = await fetch(url);
+        
+        trainImagesResponse = await fetch(url, { 
+          cache: 'no-cache',
+          headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+        });
+        
         console.log(`[MNIST] Fetched ${url} - status: ${trainImagesResponse.status}`);
+        
         if (trainImagesResponse.ok) {
           successPath = path;
           console.log(`[MNIST] Successfully found MNIST data at: ${path}`);
@@ -108,10 +140,19 @@ export async function loadMnistData(): Promise<{
       const labelUrl = `${successPath}train-labels.idx1-ubyte`;
       const testImgUrl = `${successPath}t10k-images.idx3-ubyte`;
       const testLblUrl = `${successPath}t10k-labels.idx1-ubyte`;
+      
       console.log(`[MNIST] Fetching all files from: ${successPath}`);
-      trainLabelsResponse = await fetch(labelUrl);
-      testImagesResponse = await fetch(testImgUrl);
-      testLabelsResponse = await fetch(testLblUrl);
+      
+      // Fetch all files with no caching
+      const fetchOptions = { 
+        cache: 'no-cache', 
+        headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' } 
+      };
+      
+      trainLabelsResponse = await fetch(labelUrl, fetchOptions);
+      testImagesResponse = await fetch(testImgUrl, fetchOptions);
+      testLabelsResponse = await fetch(testLblUrl, fetchOptions);
+      
       console.log(`[MNIST] train-labels.idx1-ubyte status: ${trainLabelsResponse.status}`);
       console.log(`[MNIST] t10k-images.idx3-ubyte status: ${testImagesResponse.status}`);
       console.log(`[MNIST] t10k-labels.idx1-ubyte status: ${testLabelsResponse.status}`);
@@ -144,11 +185,36 @@ export async function loadMnistData(): Promise<{
       };
     } else {
       console.warn('Could not load MNIST data from any path, using synthetic data');
-      throw new Error('Failed to load training data');
+      
+      // Generate synthetic data as fallback
+      const { images: trainImages, labels: trainLabels } = generateSyntheticData(3000);
+      const { images: testImages, labels: testLabels } = generateSyntheticData(1000, true);
+      
+      console.log(`Generated ${trainImages.length} synthetic training images and ${testImages.length} synthetic test images`);
+      
+      // Instead of throwing, return the synthetic data
+      return {
+        trainImages,
+        trainLabels,
+        testImages,
+        testLabels
+      };
     }
   } catch (error) {
     console.error('Error loading MNIST data:', error);
-    throw error;
+    
+    // Generate synthetic data as fallback even if there's an error
+    const { images: trainImages, labels: trainLabels } = generateSyntheticData(3000);
+    const { images: testImages, labels: testLabels } = generateSyntheticData(1000, true);
+    
+    console.log(`Generated ${trainImages.length} synthetic training images and ${testImages.length} synthetic test images as fallback`);
+    
+    return {
+      trainImages,
+      trainLabels,
+      testImages,
+      testLabels
+    };
   }
 }
 
