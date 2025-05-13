@@ -170,44 +170,91 @@ The application implements a 3-layer feedforward neural network:
 
 The application can be deployed either locally on your machine or remotely on a DigitalOcean droplet using Terraform.
 
-### Prerequisites
+### Local Deployment (Serve at `/`)g 
 
 - Docker installed on your machine
 - Terraform installed (for deployment)
 - SSH key pair (for remote deployment)
 - DigitalOcean droplet (for remote deployment)
 
-### Local Deployment using Terraform
+### Local Deployment (Serve at `/`)
 
-1. Ensure your `terraform/terraform.tfvars` file contains the correct configuration:
+You can deploy locally using either the default `terraform.tfvars` or by passing variables on the command line.
+
+**Option 1: Using `terraform.tfvars`**
+1. Ensure your `terraform/terraform.tfvars` file contains:
    ```hcl
-   # terraform/terraform.tfvars
    droplet_ip = "your-droplet-ip"
    private_key_path = "path/to/your/private/key"
    container_name   = "friendly-digits-explorer"
    container_port   = 8081
    host_port        = 8081
+   vite_base = "/"
+   vite_basename = "/"
+   environment = "local"
    # Optionally, for Apple Silicon:
    # build_platform = "linux/arm64"
    ```
-
 2. From the `terraform` directory, run:
    ```bash
-   $ terraform apply -var="environment=local" -auto-approve
+   terraform apply -auto-approve
    ```
 
-3. Access the application at [http://localhost:8081](http://localhost:8081)
+**Option 2: Passing variables on the command line**
+```bash
+cd terraform
+terraform apply -auto-approve \
+  -var="vite_base=/" \
+  -var="vite_basename=/" \
+  -var="environment=local"
+```
+- Access the app at: [http://localhost:8081](http://localhost:8081)
 
-### Remote Deployment using Terraform
+---
 
-1. Ensure your `terraform/terraform.tfvars` file contains the correct configuration (see above).
+### Remote Deployment (Serve at `/friendly-digits-explorer`)
 
+You can deploy remotely using either the default `terraform.tfvars` or by passing variables on the command line.
+
+**Option 1: Using `terraform.tfvars`**
+1. Ensure your `terraform/terraform.tfvars` file contains:
+   ```hcl
+   droplet_ip = "your-droplet-ip"
+   private_key_path = "path/to/your/private/key"
+   container_name   = "friendly-digits-explorer"
+   container_port   = 8081
+   host_port        = 8081
+   vite_base = "/friendly-digits-explorer/"
+   vite_basename = "/friendly-digits-explorer"
+   environment = "remote"
+   # Optionally, for Apple Silicon:
+   # build_platform = "linux/arm64"
+   ```
 2. From the `terraform` directory, run:
    ```bash
-   $ terraform apply -var="environment=remote" -auto-approve
+   terraform apply -auto-approve
    ```
 
-3. Access the application at `http://your-droplet-ip:8081`
+**Option 2: Passing variables on the command line**
+```bash
+cd terraform
+terraform apply -auto-approve \
+  -var="vite_base=/friendly-digits-explorer/" \
+  -var="vite_basename=/friendly-digits-explorer" \
+  -var="environment=remote"
+```
+- Access the app at: `https://yourdomain.com/friendly-digits-explorer`
+
+**Caddyfile for subpath proxying:**
+```caddyfile
+foobar.co.uk {
+    handle_path /friendly-digits-explorer/* {
+        reverse_proxy localhost:8081
+    }
+}
+```
+
+---
 
 ### Terraform Commands Reference
 
@@ -262,6 +309,14 @@ You can also set this in your `terraform/terraform.tfvars` file:
 ```hcl
 build_platform = "linux/arm64" # or "linux/amd64"
 ```
+
+---
+
+## Notes
+
+- You can override any variable in `terraform.tfvars` via the `-var` command line flag.
+- The `vite_base` and `vite_basename` variables control the asset and router base paths for your build.
+- For local, always use `/`. For remote subpath, use `/friendly-digits-explorer/` and `/friendly-digits-explorer`.
 
 ## Contributing
 

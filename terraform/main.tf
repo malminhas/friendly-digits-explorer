@@ -35,7 +35,7 @@ resource "null_resource" "build_image" {
   depends_on = [null_resource.cleanup]
   
   provisioner "local-exec" {
-    command = "docker buildx build --platform ${var.build_platform} --no-cache -t ${var.container_name}:latest --load .."
+    command = "docker buildx build --platform ${var.build_platform} --no-cache -t ${var.container_name}:latest --build-arg VITE_BASE=${var.vite_base} --build-arg VITE_BASENAME=${var.vite_basename} --load .."
   }
 }
 

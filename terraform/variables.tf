@@ -38,4 +38,16 @@ variable "build_platform" {
   description = "Platform to build the Docker image for (e.g., linux/amd64, linux/arm64)"
   type        = string
   default     = "linux/amd64"
+}
+
+variable "vite_base" {
+  description = "Vite base path for the build"
+  type        = string
+  default     = "/"
+}
+
+variable "vite_basename" {
+  description = "React Router basename for the build"
+  type        = string
+  default     = "/"
 } 
