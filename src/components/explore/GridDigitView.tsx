@@ -58,7 +58,7 @@ const GridDigitView = ({
           const canvas = gridCanvasesRef.current[i];
           if (canvas) {
             try {
-              console.log(`Rendering digit at index ${imageIndex}, label: ${trainLabels[imageIndex]}`);
+              // console.log(`Rendering digit at index ${imageIndex}, label: ${trainLabels[imageIndex]}`);
               
               // Ensure canvas is properly sized
               canvas.width = 28;

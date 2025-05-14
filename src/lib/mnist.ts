@@ -87,7 +87,7 @@ export async function loadMnistData(): Promise<{
     // Try each possible path until one works
     for (const path of possiblePaths) {
       try {
-        const url = `${path}train-images.idx3-ubyte`;
+        const url = `${path}train-images.bin`;
         console.log(`[MNIST] Attempting to fetch: ${url}`);
         trainImagesResponse = await fetch(url);
         console.log(`[MNIST] Fetched ${url} - status: ${trainImagesResponse.status}`);
@@ -105,16 +105,16 @@ export async function loadMnistData(): Promise<{
     
     if (successPath) {
       // If we found a working path, load all files from there
-      const labelUrl = `${successPath}train-labels.idx1-ubyte`;
-      const testImgUrl = `${successPath}t10k-images.idx3-ubyte`;
-      const testLblUrl = `${successPath}t10k-labels.idx1-ubyte`;
+      const labelUrl = `${successPath}train-labels.bin`;
+      const testImgUrl = `${successPath}t10k-images.bin`;
+      const testLblUrl = `${successPath}t10k-labels.bin`;
       console.log(`[MNIST] Fetching all files from: ${successPath}`);
       trainLabelsResponse = await fetch(labelUrl);
       testImagesResponse = await fetch(testImgUrl);
       testLabelsResponse = await fetch(testLblUrl);
-      console.log(`[MNIST] train-labels.idx1-ubyte status: ${trainLabelsResponse.status}`);
-      console.log(`[MNIST] t10k-images.idx3-ubyte status: ${testImagesResponse.status}`);
-      console.log(`[MNIST] t10k-labels.idx1-ubyte status: ${testLabelsResponse.status}`);
+      console.log(`[MNIST] train-labels.bin status: ${trainLabelsResponse.status}`);
+      console.log(`[MNIST] t10k-images.bin status: ${testImagesResponse.status}`);
+      console.log(`[MNIST] t10k-labels.bin status: ${testLabelsResponse.status}`);
       
       if (!trainImagesResponse.ok || !trainLabelsResponse.ok || 
           !testImagesResponse.ok || !testLabelsResponse.ok) {
