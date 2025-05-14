@@ -80,6 +80,8 @@ export async function loadMnistData(): Promise<{
     ];
     
     console.log("Trying to load MNIST data from possible paths:", possiblePaths);
+    console.log("Current base URL:", import.meta.env.BASE_URL);
+    console.log("Current window location:", window.location.toString());
     
     let trainImagesResponse, trainLabelsResponse, testImagesResponse, testLabelsResponse;
     let successPath = '';
