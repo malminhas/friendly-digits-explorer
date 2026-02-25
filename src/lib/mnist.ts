@@ -65,8 +65,8 @@ export async function loadMnistData(): Promise<{
   try {
     console.log("Loading MNIST data...");
     
-    // Define subsample ratios directly (5% for training, 10% for testing)
-    const trainSubsampleRatio = 0.05;
+    // Define subsample ratios directly (25% for training, 10% for testing)
+    const trainSubsampleRatio = 0.25;
     const testSubsampleRatio = 0.10;
     
     // Determine the correct base path for data files

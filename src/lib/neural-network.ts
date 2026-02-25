@@ -33,13 +33,6 @@ export function initializeModel(hiddenNodes: number = 192) {
   return { weights1, weights2, biases1, biases2 };
 }
 
-// Apply dropout during training
-function applyDropout(values: number[], rate: number = 0.3): number[] {
-  if (rate === 0) return values;
-  const scale = 1 / (1 - rate);
-  return values.map(v => Math.random() > rate ? v * scale : 0);
-}
-
 // Improved ReLU with small slope for negative values (Leaky ReLU)
 function leakyReLU(x: number): number {
   return x > 0 ? x : 0.01 * x;
@@ -55,67 +48,29 @@ function forwardPass(
   weights1: number[][],
   weights2: number[][],
   biases1: number[],
-  biases2: number[],
-  isTraining: boolean = false
+  biases2: number[]
 ): { hidden: number[]; output: number[] } {
-  console.log('Forward pass input stats:', {
-    inputLength: input.length,
-    nonZeroInputs: input.filter(x => x > 0).length,
-    inputMin: Math.min(...input),
-    inputMax: Math.max(...input)
-  });
-
-  // Normalize input
-  const mean = input.reduce((a, b) => a + b, 0) / input.length;
-  const std = Math.sqrt(input.reduce((a, b) => a + (b - mean) ** 2, 0) / input.length) + 1e-6;
-  const normalizedInput = input.map(x => (x - mean) / std);
-  
-  console.log('Input normalization:', {
-    mean,
-    std,
-    normalizedMin: Math.min(...normalizedInput),
-    normalizedMax: Math.max(...normalizedInput)
-  });
-
   // Hidden layer with Leaky ReLU activation
   const hidden = Array(weights1[0].length).fill(0);
   for (let j = 0; j < weights1[0].length; j++) {
     let sum = biases1[j];
     for (let i = 0; i < weights1.length; i++) {
-      sum += normalizedInput[i] * weights1[i][j];
+      sum += input[i] * weights1[i][j];
     }
     hidden[j] = leakyReLU(sum);
   }
-
-  console.log('Hidden layer stats:', {
-    hiddenLength: hidden.length,
-    nonZeroHidden: hidden.filter(x => x > 0).length,
-    hiddenMin: Math.min(...hidden),
-    hiddenMax: Math.max(...hidden),
-    avgHiddenActivation: hidden.reduce((a, b) => a + b, 0) / hidden.length
-  });
-
-  // Apply dropout during training
-  const hiddenDropout = isTraining ? applyDropout(hidden, 0.3) : hidden;
 
   // Output layer
   const output = Array(weights2[0].length).fill(0);
   for (let k = 0; k < weights2[0].length; k++) {
     let sum = biases2[k];
     for (let j = 0; j < weights2.length; j++) {
-      sum += hiddenDropout[j] * weights2[j][k];
+      sum += hidden[j] * weights2[j][k];
     }
     output[k] = sum;
   }
 
-  console.log('Output layer stats:', {
-    outputLength: output.length,
-    outputValues: output,
-    outputMin: Math.min(...output),
-    outputMax: Math.max(...output)
-  });
-
-  return { hidden: hiddenDropout, output };
+  return { hidden, output };
 }
 
 // Make a prediction
@@ -126,7 +81,7 @@ export function predictDigit(
   biases1: number[],
   biases2: number[]
 ): number {
-  const { output } = forwardPass(input, weights1, weights2, biases1, biases2, false);
+  const { output } = forwardPass(input, weights1, weights2, biases1, biases2);
   const probabilities = softmax(output);
   return probabilities.indexOf(Math.max(...probabilities));
 }
@@ -139,17 +94,8 @@ export function predictWithConfidence(
   biases1: number[],
   biases2: number[]
 ): { prediction: number; confidence: number[] } {
-  console.log('Starting prediction with input shape:', input.length);
-  
-  const { output } = forwardPass(input, weights1, weights2, biases1, biases2, false);
+  const { output } = forwardPass(input, weights1, weights2, biases1, biases2);
   const confidence = softmax(output);
-  
-  console.log('Confidence scores:', {
-    raw: output,
-    softmax: confidence,
-    prediction: confidence.indexOf(Math.max(...confidence))
-  });
-  
   const prediction = confidence.indexOf(Math.max(...confidence));
   return { prediction, confidence };
 }
@@ -197,8 +143,6 @@ export function trainBatch(
   const hiddenSize = weights1[0].length;
   const outputSize = weights2[0].length;
 
-  let batchLoss = 0;
-
   // Initialize gradients
   const gradW1 = Array(inputSize).fill(0).map(() => Array(hiddenSize).fill(0));
   const gradW2 = Array(hiddenSize).fill(0).map(() => Array(outputSize).fill(0));
@@ -241,9 +185,6 @@ export function trainBatch(
       output[j] /= sumExp;
     }
 
-    // Calculate loss
-    batchLoss -= Math.log(output[label] + 1e-10);
-
     // Backward pass
     const outputError = new Array(outputSize);
     for (let j = 0; j < outputSize; j++) {
@@ -279,25 +220,17 @@ export function trainBatch(
     }
   }
 
-  // Update weights and biases with momentum
+  // Update weights and biases with L2 regularization
   const scale = learningRate / batchSize;
-  let totalWeightUpdate = 0;
-  let maxWeightUpdate = 0;
 
   for (let i = 0; i < inputSize; i++) {
     for (let j = 0; j < hiddenSize; j++) {
-      const update = scale * (gradW1[i][j] + l2Lambda * weights1[i][j]);
-      weights1[i][j] -= update;
-      totalWeightUpdate += Math.abs(update);
-      maxWeightUpdate = Math.max(maxWeightUpdate, Math.abs(update));
+      weights1[i][j] -= scale * (gradW1[i][j] + l2Lambda * weights1[i][j]);
     }
   }
   for (let i = 0; i < hiddenSize; i++) {
     for (let j = 0; j < outputSize; j++) {
-      const update = scale * (gradW2[i][j] + l2Lambda * weights2[i][j]);
-      weights2[i][j] -= update;
-      totalWeightUpdate += Math.abs(update);
-      maxWeightUpdate = Math.max(maxWeightUpdate, Math.abs(update));
+      weights2[i][j] -= scale * (gradW2[i][j] + l2Lambda * weights2[i][j]);
     }
   }
   for (let i = 0; i < hiddenSize; i++) {
@@ -305,16 +238,6 @@ export function trainBatch(
   }
   for (let i = 0; i < outputSize; i++) {
     biases2[i] -= scale * gradB2[i];
-  }
-
-  // Log batch statistics occasionally
-  if (Math.random() < 0.1) { // Log ~10% of batches to avoid console spam
-    console.log('Batch stats:', {
-      batchSize,
-      avgLoss: batchLoss / batchSize,
-      avgWeightUpdate: totalWeightUpdate / (inputSize * hiddenSize + hiddenSize * outputSize),
-      maxWeightUpdate
-    });
   }
 
   return { weights1, weights2, biases1, biases2 };

@@ -178,17 +178,6 @@ export const NeuralNetworkProvider = ({ children }: { children: ReactNode }) => 
     if (!weights1 || !weights2 || !biases1 || !biases2) {
       throw new Error("Model not initialized");
     }
-    console.log('Making prediction with model:', {
-      metadata: modelMetadata,
-      weightsShape: {
-        weights1: [weights1.length, weights1[0].length],
-        weights2: [weights2.length, weights2[0].length]
-      },
-      sampleWeights: {
-        weights1_sample: weights1[0].slice(0, 3),
-        weights2_sample: weights2[0].slice(0, 3)
-      }
-    });
     return predictDigit(input, weights1, weights2, biases1, biases2);
   };
 
@@ -196,17 +185,6 @@ export const NeuralNetworkProvider = ({ children }: { children: ReactNode }) => 
     if (!weights1 || !weights2 || !biases1 || !biases2) {
       throw new Error("Model not initialized");
     }
-    console.log('Getting confidence with model:', {
-      metadata: modelMetadata,
-      weightsShape: {
-        weights1: [weights1.length, weights1[0].length],
-        weights2: [weights2.length, weights2[0].length]
-      },
-      sampleWeights: {
-        weights1_sample: weights1[0].slice(0, 3),
-        weights2_sample: weights2[0].slice(0, 3)
-      }
-    });
     return predictWithConfidence(input, weights1, weights2, biases1, biases2);
   };
 
@@ -238,18 +216,15 @@ export const NeuralNetworkProvider = ({ children }: { children: ReactNode }) => 
         testImages: testImages.length
       });
       
-      // Shuffle training data
       const indices = Array.from({ length: trainImages.length }, (_, i) => i);
-      for (let i = indices.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [indices[i], indices[j]] = [indices[j], indices[i]];
-      }
 
       // Training loop
-      console.log('Starting training loop...');
       for (let epoch = 0; epoch < epochs; epoch++) {
-        console.time(`Epoch ${epoch + 1}`);
-        let epochLoss = 0;
+        // Reshuffle training data each epoch for better SGD convergence
+        for (let i = indices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
         
         // Process batches
         for (let i = 0; i < trainImages.length; i += batchSize) {
@@ -285,7 +260,6 @@ export const NeuralNetworkProvider = ({ children }: { children: ReactNode }) => 
           biases2
         );
 
-        console.timeEnd(`Epoch ${epoch + 1}`);
         console.log(`Epoch ${epoch + 1}/${epochs} - Accuracy: ${(accuracy * 100).toFixed(2)}%`);
 
         // Update state and UI
