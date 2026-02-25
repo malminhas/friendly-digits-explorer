@@ -62,7 +62,7 @@ export default function TrainingView({ onTrainingComplete }: TrainingViewProps) 
       <div>
         <h2 className="text-2xl font-bold">Train Your Neural Network</h2>
         <p className="text-gray-600">
-          This is a simplified 3-layer neural network trained on a subset of 3,000 training images and 
+          This is a simplified 3-layer neural network trained on a subset of 15,000 training images and 
           1,000 test images from the full MNIST dataset of 60,000 training images and 10,000 test images.
           The network has 784 input nodes (one for each pixel),{' '}
           {hiddenNodes} nodes in the hidden layer, and 10 output nodes (one for each digit).
@@ -80,7 +80,7 @@ export default function TrainingView({ onTrainingComplete }: TrainingViewProps) 
               </Badge>
             </div>
             <p className="text-sm text-gray-600">
-              Trained on {modelMetadata.trainedAt.split('T')[0]} using 3,000 training images and 1,000 test images with:
+              Trained on {modelMetadata.trainedAt.split('T')[0]} using 15,000 training images and 1,000 test images with:
               {' '}{modelMetadata.epochs} epochs,
               {' '}learning rate {modelMetadata.learningRate},
               {' '}batch size {modelMetadata.batchSize},
