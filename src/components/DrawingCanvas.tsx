@@ -21,8 +21,9 @@ export default function DrawingCanvas() {
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Set up drawing style - thicker lines to match MNIST characteristics
-    ctx.lineWidth = 28; // Much thicker lines to match MNIST style
+    // Stroke width tuned so that after bounding-box crop + scale to 20x20,
+    // strokes end up ~2-3px wide, matching MNIST training data.
+    ctx.lineWidth = 18;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = 'black';
@@ -109,66 +110,94 @@ export default function DrawingCanvas() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // First, create a temporary canvas at a larger size for better anti-aliasing
-    const tempCanvas = document.createElement('canvas');
-    const scaleFactor = 2; // Scale up for better quality
-    tempCanvas.width = 28 * scaleFactor;
-    tempCanvas.height = 28 * scaleFactor;
-    const tempCtx = tempCanvas.getContext('2d');
-    if (!tempCtx) return;
+    const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-    // Set white background
-    tempCtx.fillStyle = 'white';
-    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+    // Step 1: Find bounding box of drawn content (non-white pixels)
+    let minX = width, minY = height, maxX = 0, maxY = 0;
+    let hasContent = false;
 
-    // Calculate scaling to maintain aspect ratio and center the digit
-    const sourceAspect = canvas.width / canvas.height;
-    const targetAspect = 1; // Square target
-    
-    let sourceWidth = canvas.width;
-    let sourceHeight = canvas.height;
-    let sourceX = 0;
-    let sourceY = 0;
-
-    if (sourceAspect > targetAspect) {
-      // Source is wider than target
-      sourceWidth = canvas.height;
-      sourceX = (canvas.width - sourceWidth) / 2;
-    } else {
-      // Source is taller than target
-      sourceHeight = canvas.width;
-      sourceY = (canvas.height - sourceHeight) / 2;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        const brightness = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+        if (brightness < 240) {
+          hasContent = true;
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
     }
 
-    // Draw scaled and centered image
-    tempCtx.drawImage(
-      canvas,
-      sourceX, sourceY, sourceWidth, sourceHeight,
-      0, 0, tempCanvas.width, tempCanvas.height
-    );
+    if (!hasContent) return;
 
-    // Now scale down to final 28x28 with better quality
-    const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = 28;
-    finalCanvas.height = 28;
-    const finalCtx = finalCanvas.getContext('2d');
-    if (!finalCtx) return;
+    // Step 2: Add padding around the bounding box
+    const pad = 15;
+    minX = Math.max(0, minX - pad);
+    minY = Math.max(0, minY - pad);
+    maxX = Math.min(width - 1, maxX + pad);
+    maxY = Math.min(height - 1, maxY + pad);
 
-    finalCtx.fillStyle = 'white';
-    finalCtx.fillRect(0, 0, 28, 28);
-    finalCtx.drawImage(tempCanvas, 0, 0, 28, 28);
+    const bw = maxX - minX + 1;
+    const bh = maxY - minY + 1;
 
-    // Get image data and process
-    const imageData = finalCtx.getImageData(0, 0, 28, 28);
-    const input = new Array(784);
-    
-    // Convert to grayscale and normalize, matching MNIST characteristics
-    for (let i = 0; i < imageData.data.length; i += 4) {
-      const grayscale = (imageData.data[i] + imageData.data[i + 1] + imageData.data[i + 2]) / 3;
-      input[i / 4] = (255 - grayscale) / 255; // Invert and normalize
+    // Step 3: Scale bounding box to fit within 20x20 (MNIST standard),
+    // preserving aspect ratio
+    const fitSize = 20;
+    const scale = fitSize / Math.max(bw, bh);
+    const sw = Math.round(bw * scale);
+    const sh = Math.round(bh * scale);
+
+    const scaledCanvas = document.createElement('canvas');
+    scaledCanvas.width = sw;
+    scaledCanvas.height = sh;
+    const scaledCtx = scaledCanvas.getContext('2d');
+    if (!scaledCtx) return;
+
+    scaledCtx.fillStyle = 'white';
+    scaledCtx.fillRect(0, 0, sw, sh);
+    scaledCtx.imageSmoothingEnabled = true;
+    scaledCtx.imageSmoothingQuality = 'medium';
+    scaledCtx.drawImage(canvas, minX, minY, bw, bh, 0, 0, sw, sh);
+
+    // Step 4: Read scaled pixels and compute center of mass
+    const scaledData = scaledCtx.getImageData(0, 0, sw, sh);
+    const pixels = new Float32Array(sw * sh);
+    let totalMass = 0, comX = 0, comY = 0;
+
+    for (let y = 0; y < sh; y++) {
+      for (let x = 0; x < sw; x++) {
+        const idx = (y * sw + x) * 4;
+        const gray = (scaledData.data[idx] + scaledData.data[idx + 1] + scaledData.data[idx + 2]) / 3;
+        const value = (255 - gray) / 255;
+        pixels[y * sw + x] = value;
+        totalMass += value;
+        comX += x * value;
+        comY += y * value;
+      }
     }
 
-    // Make prediction
+    if (totalMass === 0) return;
+
+    comX /= totalMass;
+    comY /= totalMass;
+
+    // Step 5: Place into 28x28, shifting so center of mass lands at (13.5, 13.5)
+    const input = new Array(784).fill(0);
+    const offsetX = Math.round(13.5 - comX);
+    const offsetY = Math.round(13.5 - comY);
+
+    for (let y = 0; y < sh; y++) {
+      for (let x = 0; x < sw; x++) {
+        const nx = x + offsetX;
+        const ny = y + offsetY;
+        if (nx >= 0 && nx < 28 && ny >= 0 && ny < 28) {
+          input[ny * 28 + nx] = pixels[y * sw + x];
+        }
+      }
+    }
+
     const result = predictWithConfidence(input);
     setPrediction(result.prediction);
     setConfidence(result.confidence);
