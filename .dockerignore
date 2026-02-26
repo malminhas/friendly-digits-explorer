@@ -36,8 +36,9 @@ coverage
 Thumbs.db
 desktop.ini
 
-# Terraform
+# Terraform (exclude all except nginx template needed for Docker build)
 terraform
+!terraform/nginx-subdir.conf.template
 .terraform
 *.tfstate
 *.tfstate.*

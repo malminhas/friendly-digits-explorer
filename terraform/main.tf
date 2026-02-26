@@ -19,13 +19,17 @@ provider "docker" {
   ssh_opts = ["-i", var.private_key_path]
 }
 
-# Clean up old resources
+# Clean up old resources (environment-specific to avoid cross-affecting local/remote)
 resource "null_resource" "cleanup" {
   provisioner "local-exec" {
     command = <<-EOT
+      # Always remove stale .tar from previous remote deploys
       rm -f ${var.container_name}.tar
-      docker rm -f ${var.container_name} 2>/dev/null || true
-      docker rmi ${var.container_name}:latest 2>/dev/null || true
+      # Only remove local container/image when deploying locally
+      if [ "${var.environment}" = "local" ]; then
+        docker rm -f ${var.container_name} 2>/dev/null || true
+        docker rmi ${var.container_name}:latest 2>/dev/null || true
+      fi
     EOT
   }
 }
